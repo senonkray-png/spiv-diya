@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum ResourceCategory {
+  equipment
+  space
+  logistics
+  raw_materials
+  sales_department
+  marketing
+  workforce
+}
+
+enum PaymentMethod {
+  crypto_binance
+  crypto_whitebit
+  p2p_screenshot
+  p2p_manual
+}
+
+enum PaymentStatus {
+  pending
+  awaiting_confirmation
+  confirmed
+  rejected
+}
+
+enum DealStatus {
+  draft
+  negotiating
+  signed
+  completed
+  cancelled
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  passwordHash String
+  companyName String
+  industry    String
+  city        String
+  region      String
+  balance     Int      @default(0) // СпівМонети
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assets      Resource[]     @relation("UserAssets")
+  deficits    Resource[]     @relation("UserDeficits")
+  payments    Payment[]
+  dealsA      DealParty[]
+  messages    Message[]
+  onboarding  OnboardingSession?
+}
+
+model Resource {
+  id          String           @id @default(cuid())
+  category    ResourceCategory
+  title       String
+  description String
+  quantity    Float?
+  unit        String?
+  city        String
+  region      String
+  photos      String[]         @default([])
+  createdAt   DateTime         @default(now())
+
+  ownerId     String
+  owner       User             @relation("UserAssets", fields: [ownerId], references: [id])
+
+  // Same resource as deficit (owner wants this)
+  deficitOf   String?
+  deficitUser User?            @relation("UserDeficits", fields: [deficitOf], references: [id])
+
+  assetMatches  Match[]  @relation("MatchAsset")
+  deficitMatches Match[] @relation("MatchDeficit")
+}
+
+model Match {
+  id            String   @id @default(cuid())
+  type          String   // "direct" | "chain"
+  score         Int      // 0–100
+  createdAt     DateTime @default(now())
+
+  initiatorId   String
+  counterpartId String
+
+  assetId       String
+  asset         Resource @relation("MatchAsset", fields: [assetId], references: [id])
+
+  deficitId     String
+  deficit       Resource @relation("MatchDeficit", fields: [deficitId], references: [id])
+
+  chainData     Json?    // stores chain steps for circular deals
+  deal          Deal?
+}
+
+model Deal {
+  id        String     @id @default(cuid())
+  matchId   String     @unique
+  match     Match      @relation(fields: [matchId], references: [id])
+  status    DealStatus @default(draft)
+  terms     String     @default("")
+  pdfUrl    String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  parties   DealParty[]
+  messages  Message[]
+}
+
+model DealParty {
+  id     String @id @default(cuid())
+  dealId String
+  userId String
+  deal   Deal   @relation(fields: [dealId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([dealId, userId])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  dealId    String
+  senderId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  deal      Deal @relation(fields: [dealId], references: [id])
+  sender    User @relation(fields: [senderId], references: [id])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  userId        String
+  method        PaymentMethod
+  amountUSD     Float
+  amountTokens  Int
+  status        PaymentStatus @default(pending)
+  screenshot    String?       // URL to uploaded image
+  txHash        String?       // crypto tx
+  createdAt     DateTime      @default(now())
+  confirmedAt   DateTime?
+
+  user          User @relation(fields: [userId], references: [id])
+}
+
+model OnboardingSession {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  history   Json     @default("[]") // array of {role, content}
+  completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
