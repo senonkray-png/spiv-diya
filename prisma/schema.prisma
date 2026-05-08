@@ -41,27 +41,120 @@ enum DealStatus {
   cancelled
 }
 
+enum UserRole {
+  member
+  provider
+  buyer
+  admin
+}
+
+enum ListingStatus {
+  active
+  paused
+  removed
+}
+
+enum ServiceType {
+  offer
+  request
+}
+
+enum PartnerStatus {
+  pending
+  accepted
+  rejected
+}
+
+enum WalletTxType {
+  deposit
+  withdrawal
+  transfer_in
+  transfer_out
+  purchase
+  refund
+  bonus
+}
+
+enum WithdrawalStatus {
+  pending
+  approved
+  rejected
+  paid
+}
+
+enum NotificationType {
+  partner_request
+  partner_accepted
+  message
+  product_warning
+  product_removed
+  service_warning
+  service_removed
+  payment_confirmed
+  payment_rejected
+  withdrawal_approved
+  withdrawal_rejected
+  system
+}
+
 // ─── Models ───────────────────────────────────────────────────────────────────
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  passwordHash String
-  companyName String
-  industry    String
-  city        String
-  region      String
-  balance     Int      @default(0) // СпівМонети
-  verified    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  companyName   String
+  industry      String
+  city          String
+  region        String
+  country       String   @default("Україна")
+  balance       Int      @default(0) // СпівМонети
+  verified      Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  role          UserRole @default(member)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  assets      Resource[]     @relation("UserAssets")
-  deficits    Resource[]     @relation("UserDeficits")
-  payments    Payment[]
-  dealsA      DealParty[]
-  messages    Message[]
-  onboarding  OnboardingSession?
+  // Marketplace profile fields
+  fullName      String?
+  phone         String?
+  workPhone     String?
+  websiteUrl    String?
+  avatarUrl     String?
+  bannerUrl     String?
+  aboutMe       String?  @db.Text
+  interests     String[] @default([])
+  telegram      String?
+  instagram     String?
+  facebook      String?
+  whatsapp      String?
+  businessNiche String?
+  acceptsPartners Boolean @default(true)
+
+  assets         Resource[]      @relation("UserAssets")
+  deficits       Resource[]      @relation("UserDeficits")
+  payments       Payment[]
+  dealsA         DealParty[]
+  messages       Message[]
+  onboarding     OnboardingSession?
+
+  products       Product[]
+  serviceAds     ServiceAd[]
+  walletTxs      WalletTransaction[]
+  withdrawals    WithdrawalRequest[]
+
+  // Direct messaging
+  sentMessages       DirectMessage[] @relation("DMSent")
+  receivedMessages   DirectMessage[] @relation("DMReceived")
+
+  // Partnerships & favorites
+  partnersInitiated  Partnership[]   @relation("PartnerInitiator")
+  partnersTarget     Partnership[]   @relation("PartnerTarget")
+  favoritesByMe      Favorite[]      @relation("FavOwner")
+  favoritedBy        Favorite[]      @relation("FavTarget")
+
+  // Notifications
+  notifications  Notification[]
 }
 
 model Resource {
@@ -162,5 +255,179 @@ model OnboardingSession {
   user      User     @relation(fields: [userId], references: [id])
   history   Json     @default("[]") // array of {role, content}
   completed Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Marketplace ──────────────────────────────────────────────────────────────
+
+model Product {
+  id          String        @id @default(cuid())
+  ownerId     String
+  owner       User          @relation(fields: [ownerId], references: [id])
+  title       String
+  description String        @db.Text
+  priceTokens Int           // in СпівМонети (0 = exchange/contract)
+  priceUAH    Int?          // optional UAH equivalent
+  currency    String        @default("UAH") // "UAH" | "USD" | "tokens"
+  category    String?       // free-form market category
+  city        String?
+  region      String?
+  photos      String[]      @default([])
+  status      ListingStatus @default(active)
+  views       Int           @default(0)
+  sourceUrl   String?       // imported from this URL
+  externalId  String?       // id in source site
+  removedReason String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  favorites   Favorite[]    @relation("FavProduct")
+
+  @@index([ownerId])
+  @@index([status])
+}
+
+model ServiceAd {
+  id          String        @id @default(cuid())
+  ownerId     String
+  owner       User          @relation(fields: [ownerId], references: [id])
+  type        ServiceType   // offer | request
+  title       String
+  description String        @db.Text
+  priceTokens Int?          // optional fixed price
+  priceUAH    Int?
+  category    String?
+  city        String?
+  region      String?
+  photos      String[]      @default([])
+  status      ListingStatus @default(active)
+  removedReason String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  favorites   Favorite[]    @relation("FavService")
+
+  @@index([ownerId])
+  @@index([type])
+  @@index([status])
+}
+
+// ─── Direct messaging (user ↔ user) ───────────────────────────────────────────
+
+model DirectMessage {
+  id          String   @id @default(cuid())
+  senderId    String
+  receiverId  String
+  content     String   @db.Text
+  contextType String?  // "product" | "service" | "user"
+  contextId   String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  sender      User @relation("DMSent", fields: [senderId], references: [id])
+  receiver    User @relation("DMReceived", fields: [receiverId], references: [id])
+
+  @@index([senderId, receiverId])
+  @@index([receiverId, createdAt])
+}
+
+// ─── Partnerships ─────────────────────────────────────────────────────────────
+
+model Partnership {
+  id            String        @id @default(cuid())
+  initiatorId   String
+  targetId      String
+  status        PartnerStatus @default(pending)
+  message       String?
+  createdAt     DateTime      @default(now())
+  acceptedAt    DateTime?
+
+  initiator     User @relation("PartnerInitiator", fields: [initiatorId], references: [id])
+  target        User @relation("PartnerTarget", fields: [targetId], references: [id])
+
+  @@unique([initiatorId, targetId])
+  @@index([targetId])
+}
+
+// ─── Favorites (bookmarks) ────────────────────────────────────────────────────
+
+model Favorite {
+  id          String   @id @default(cuid())
+  ownerId     String
+  owner       User     @relation("FavOwner", fields: [ownerId], references: [id])
+
+  // Polymorphic-ish: only one of the four refs is set
+  userId      String?
+  user        User?    @relation("FavTarget", fields: [userId], references: [id])
+
+  productId   String?
+  product     Product? @relation("FavProduct", fields: [productId], references: [id])
+
+  serviceId   String?
+  service     ServiceAd? @relation("FavService", fields: [serviceId], references: [id])
+
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([ownerId])
+  @@unique([ownerId, userId])
+  @@unique([ownerId, productId])
+  @@unique([ownerId, serviceId])
+}
+
+// ─── Wallet (transactions, withdrawals) ───────────────────────────────────────
+
+model WalletTransaction {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id])
+  type         WalletTxType
+  amount       Int          // СпівМонети (signed: + in / - out)
+  balanceAfter Int
+  description  String?
+  meta         Json?        // {peerId, productId, paymentId, ...}
+  createdAt    DateTime     @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model WithdrawalRequest {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  amountTokens Int
+  amountUAH   Int?
+  details     String           // bank card / IBAN / wallet address
+  reason      String?
+  status      WithdrawalStatus @default(pending)
+  adminNote   String?
+  createdAt   DateTime         @default(now())
+  resolvedAt  DateTime?
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id])
+  type        NotificationType
+  title       String
+  body        String?
+  entityType  String?
+  entityId    String?
+  link        String?
+  read        Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+// ─── CMS / site config ────────────────────────────────────────────────────────
+
+model HomeContent {
+  locale    String   @id // "uk" | "ru" | "en"
+  content   Json     @default("{}")
   updatedAt DateTime @updatedAt
 }

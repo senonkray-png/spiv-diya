@@ -23,6 +23,11 @@ export async function login(_prev: { error: string }, formData: FormData) {
     return { error: "Невірний email або пароль." };
   }
 
-  await createSession({ userId: user.id, email: user.email, companyName: user.companyName });
+  await createSession({
+    userId: user.id,
+    email: user.email,
+    companyName: user.companyName,
+    role: user.role,
+  });
   redirect("/dashboard");
 }

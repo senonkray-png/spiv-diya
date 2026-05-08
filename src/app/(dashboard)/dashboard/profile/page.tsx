@@ -1,16 +1,11 @@
+import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { Card } from "@/components/ui/Card";
+import { ProfileEditor } from "@/components/profile/ProfileEditor";
+import { ResourcesEditor } from "@/components/profile/ResourcesEditor";
+import { PageHeader } from "@/components/ui/PageHeader";
 
-const categoryLabels: Record<string, string> = {
-  equipment: "Обладнання",
-  space: "Виробничі площі",
-  logistics: "Логістика",
-  raw_materials: "Сировина",
-  sales_department: "Відділ продажів",
-  marketing: "Маркетинг",
-  workforce: "Персонал",
-};
+export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const session = await getSession();
@@ -23,71 +18,72 @@ export default async function ProfilePage() {
 
   if (!user) return null;
 
+  const initial = {
+    email: user.email,
+    balance: user.balance,
+    verified: user.verified,
+    companyName: user.companyName,
+    fullName: user.fullName ?? "",
+    industry: user.industry,
+    businessNiche: user.businessNiche ?? "",
+    city: user.city,
+    region: user.region,
+    country: user.country ?? "Україна",
+    phone: user.phone ?? "",
+    workPhone: user.workPhone ?? "",
+    websiteUrl: user.websiteUrl ?? "",
+    avatarUrl: user.avatarUrl ?? "",
+    bannerUrl: user.bannerUrl ?? "",
+    aboutMe: user.aboutMe ?? "",
+    telegram: user.telegram ?? "",
+    instagram: user.instagram ?? "",
+    facebook: user.facebook ?? "",
+    whatsapp: user.whatsapp ?? "",
+    acceptsPartners: user.acceptsPartners,
+    role: (user.role === "admin" ? "provider" : user.role) as "member" | "provider" | "buyer",
+    interests: user.interests ?? [],
+  };
+
+  const lite = (r: typeof user.assets[number]) => ({
+    id: r.id,
+    category: r.category,
+    title: r.title,
+    description: r.description,
+    city: r.city,
+    region: r.region,
+  });
+
   return (
-    <div className="p-4 md:p-8 max-w-3xl">
-      <div className="mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-zinc-900 dark:text-white">Профіль</h1>
-        <p className="text-zinc-500 mt-0.5 text-sm">Ваші дані та ресурси</p>
+    <div className="p-4 md:p-8 max-w-4xl">
+      <PageHeader
+        title="Профіль"
+        description="Як вас побачать партнери у каталозі та маркетплейсі"
+        actions={
+          <Link
+            href={`/u/${user.id}`}
+            target="_blank"
+            className="text-sm font-medium text-blue-600 hover:underline"
+          >
+            Подивитись публічний профіль →
+          </Link>
+        }
+      />
+
+      <ProfileEditor initial={initial} />
+
+      <div className="mt-8 mb-3">
+        <h2 className="text-base md:text-lg font-bold text-zinc-900 dark:text-white">Ваші ресурси</h2>
+        <p className="text-xs text-zinc-500 mt-0.5">
+          ШІ-агент використовує цей перелік для пошуку партнерів. Будь-які зміни автоматично перевіряються на збіги.
+        </p>
       </div>
 
-      <Card className="mb-4" padding="sm">
-        <h2 className="font-semibold text-zinc-900 dark:text-white mb-3 text-sm">Інформація про компанію</h2>
-        <dl className="space-y-2">
-          {[
-            { label: "Назва", value: user.companyName },
-            { label: "Email", value: user.email },
-            { label: "Галузь", value: user.industry },
-            { label: "Місто", value: user.city },
-            { label: "Регіон", value: user.region },
-            { label: "Баланс", value: `${user.balance} СпівМонет` },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex gap-3">
-              <dt className="w-24 shrink-0 text-xs text-zinc-500 pt-0.5">{label}</dt>
-              <dd className="text-sm font-medium text-zinc-900 dark:text-white">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card padding="sm">
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3 text-sm">
-            Активи ({user.assets.length})
-          </h2>
-          {user.assets.length === 0 && (
-            <p className="text-xs text-zinc-400">Не заповнено. Пройдіть онбординг.</p>
-          )}
-          <div className="space-y-2">
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {user.assets.map((a: any) => (
-              <div key={a.id} className="bg-green-50 dark:bg-green-950/30 rounded-xl p-3">
-                <p className="text-sm font-medium text-zinc-900 dark:text-white">{a.title}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">{categoryLabels[a.category]} · {a.city}</p>
-                {a.description && <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">{a.description}</p>}
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card padding="sm">
-          <h2 className="font-semibold text-zinc-900 dark:text-white mb-3 text-sm">
-            Дефіцити ({user.deficits.length})
-          </h2>
-          {user.deficits.length === 0 && (
-            <p className="text-xs text-zinc-400">Не заповнено. Пройдіть онбординг.</p>
-          )}
-          <div className="space-y-2">
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {user.deficits.map((d: any) => (
-              <div key={d.id} className="bg-orange-50 dark:bg-orange-950/30 rounded-xl p-3">
-                <p className="text-sm font-medium text-zinc-900 dark:text-white">{d.title}</p>
-                <p className="text-xs text-zinc-500 mt-0.5">{categoryLabels[d.category]} · {d.city}</p>
-                {d.description && <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">{d.description}</p>}
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      <ResourcesEditor
+        initialAssets={user.assets.map(lite)}
+        initialDeficits={user.deficits.map(lite)}
+        defaultCity={user.city}
+        defaultRegion={user.region}
+      />
     </div>
   );
 }

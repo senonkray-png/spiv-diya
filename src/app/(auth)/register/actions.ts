@@ -28,10 +28,19 @@ export async function register(_prev: { error: string }, formData: FormData) {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
+  // First user becomes admin automatically (bootstrap convenience)
+  const userCount = await prisma.user.count();
+  const role = userCount === 0 ? "admin" : "member";
+
   const user = await prisma.user.create({
-    data: { email, passwordHash, companyName, industry, city, region },
+    data: { email, passwordHash, companyName, industry, city, region, role },
   });
 
-  await createSession({ userId: user.id, email: user.email, companyName: user.companyName });
+  await createSession({
+    userId: user.id,
+    email: user.email,
+    companyName: user.companyName,
+    role: user.role,
+  });
   redirect("/onboarding");
 }

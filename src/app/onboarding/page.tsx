@@ -40,7 +40,8 @@ export default function OnboardingPage() {
       const data = await res.json();
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
       if (data.completed) {
-        setTimeout(() => router.push("/dashboard"), 2000);
+        const target = data.matchesCreated > 0 ? "/dashboard/opportunities" : "/dashboard";
+        setTimeout(() => router.push(target), 1800);
       }
     } finally {
       setLoading(false);
@@ -81,7 +82,7 @@ export default function OnboardingPage() {
               <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-6 max-w-sm mx-auto">
                 Задам кілька питань про підприємство: які ресурси є та що потрібно. Займе 3–5 хвилин.
               </p>
-              <Button size="lg" onClick={start}>Розпочати інтерв'ю →</Button>
+              <Button size="lg" onClick={start}>Розпочати інтерв&apos;ю →</Button>
             </div>
           )}
 

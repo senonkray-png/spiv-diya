@@ -1,36 +1,119 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# СпівДія
 
-## Getting Started
+Маркетплейс і платформа кооперації для українського бізнесу. Розміщуйте товари
+та послуги, шукайте партнерів, спілкуйтесь напряму, ведіть розрахунки у
+внутрішній валюті — все на одній сторінці.
 
-First, run the development server:
+## Ключові можливості
+
+- **Каталог товарів** — звичайні картки маркетплейса, фото, ціни (₴ або
+  СпівМонети), фільтри й пошук.
+- **Послуги та запити** — два типи оголошень: «Пропоную послугу» та «Шукаю».
+- **Імпорт товарів зі свого сайту** (`/dashboard/import`) — вкажіть посилання
+  на ваш магазин (Shopify, Tilda, Хорошоп, WooCommerce та інші — все, що
+  публікує мікророзмітку Schema.org/OpenGraph), система зчитає назву, опис,
+  фото й ціну. Імпорт можна підкорегувати перед публікацією.
+- **Повноцінний профіль підприємства** — аватар, банер, контакти, соцмережі,
+  сайт, інтереси, опис.
+- **Публічна сторінка профілю** `/u/[id]` з товарами, послугами, контактами.
+- **Пошук партнерів** (`/marketplace/partners`) з фільтрами за роллю, містом,
+  тегами, та запит на партнерство з повідомленням.
+- **Обране** — зберігайте товари, послуги і компанії, що сподобалися.
+- **Чати між користувачами** — пряме спілкування з партнерами та клієнтами.
+- **Гаманець із СпівМонетами** — поповнення (Binance Pay / WhiteBit /
+  Monobank / переказ на картку), P2P-перекази між користувачами, історія
+  транзакцій, заявки на вивід.
+- **Адмін-панель** — модерація платежів, заявок на вивід, товарів і послуг,
+  керування ролями та балансами користувачів. Перший зареєстрований
+  користувач автоматично отримує роль `admin`.
+- **AI-онбординг** (опційно) — Claude задає кілька питань і формує перший
+  набір активів і дефіцитів.
+- **Метчинг ресурсів** — автоматичний пошук прямих метчів і ланцюгових
+  обмінів між активами і дефіцитами.
+
+## Стек
+
+- Next.js 16 (App Router, TypeScript, Tailwind v4)
+- Prisma 7 + PostgreSQL (через `@prisma/adapter-pg`)
+- bcryptjs + jose для авторизації (JWT в cookie)
+- Anthropic Claude SDK (AI-онбординг)
+
+## Швидкий старт
 
 ```bash
+# 1. Залежності
+npm install
+
+# 2. Налаштування
+cp .env.local.example .env.local
+# вкажіть DATABASE_URL і NEXTAUTH_SECRET
+
+# 3. База даних
+npx prisma migrate deploy
+
+# 4. Запуск
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Відкрийте `http://localhost:3000`. Перший зареєстрований користувач отримує
+адмінську роль і бачить розділ «Адмін» у навігації.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Структура
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── (auth)/                 # Login / Register
+│   ├── (dashboard)/dashboard/  # Особистий кабінет
+│   │   ├── admin/              # Адмін-панель
+│   │   ├── favorites/          # Обране
+│   │   ├── import/             # Імпорт із сайту
+│   │   ├── matches/            # Метчі
+│   │   ├── messages/           # Прямі чати
+│   │   ├── partners/           # Партнерства
+│   │   ├── products/           # Мої товари
+│   │   ├── profile/            # Редактор профілю
+│   │   ├── services/           # Мої послуги
+│   │   └── wallet/             # Гаманець
+│   ├── marketplace/            # Публічний каталог
+│   │   ├── partners/           # Каталог підприємств
+│   │   ├── products/           # Каталог товарів
+│   │   └── services/           # Каталог послуг
+│   ├── u/[id]/                 # Публічний профіль
+│   └── api/                    # Усі API-роути
+├── components/
+│   ├── admin/                  # AdminShell
+│   ├── dashboard/              # Sidebar
+│   ├── import/                 # ImportClient
+│   ├── market/                 # ProductCard, ServiceCard, форми
+│   ├── messages/               # MessagesView
+│   ├── partners/               # PartnerActions, PartnerInviteForm
+│   ├── profile/                # ProfileEditor
+│   ├── ui/                     # Button, Card, Input, Avatar, Badge, …
+│   ├── users/                  # UserCard, UserPublicActions
+│   └── wallet/                 # WalletPanel
+├── lib/
+│   ├── ai/                     # AI-онбординг
+│   ├── auth.ts                 # requireAdmin / requireUser
+│   ├── db.ts                   # Prisma singleton
+│   ├── import/                 # Site importer (Schema.org / OG)
+│   ├── matching/               # Матчмейкінг
+│   ├── payments/               # Binance / WhiteBit / Mono
+│   └── session.ts              # JWT cookie session
+└── types/
+```
 
-## Learn More
+## Архітектурні нотатки
 
-To learn more about Next.js, take a look at the following resources:
+- Сесія зберігається в HTTP-only cookie через `jose`. Поле `role` додаткове —
+  свіже `role` завжди тягнеться з БД у `requireAdmin()`.
+- Усі грошові операції створюють запис у `WalletTransaction` (для аудиту) і
+  атомарно оновлюють `User.balance` через `prisma.$transaction`.
+- Купівля товару за СпівМонети одразу шле повідомлення продавцю та створює
+  нотифікацію.
+- Імпортер працює без headless-браузера: парсить JSON-LD `Product` та
+  OpenGraph-метатеги. Це дає 80%+ покриття популярних e-commerce-движків.
+- Перший користувач отримує роль `admin` автоматично — щоб не плодити окремий
+  bootstrap-сценарій.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Більше деталей — `ARCHITECTURE.md`.
