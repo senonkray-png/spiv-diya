@@ -29,5 +29,11 @@ export async function login(_prev: { error: string }, formData: FormData) {
     companyName: user.companyName,
     role: user.role,
   });
+
+  // New registrations stay `member` until they pick a role on /welcome — don’t skip them to dashboard.
+  if (user.role === "member" && user.subscriptionPlan === "free") {
+    redirect("/welcome");
+  }
+
   redirect("/dashboard");
 }

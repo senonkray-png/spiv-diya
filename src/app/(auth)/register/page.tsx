@@ -21,6 +21,10 @@ export default function RegisterPage() {
           <p className="mt-2 text-zinc-600 dark:text-zinc-400">
             Створіть акаунт за 1 хвилину
           </p>
+          <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
+            Далі ви підтвердите пошту та оберете роль: покупець (безкоштовно), продавець або підприємець — без
+            обов&apos;язкового інтерв&apos;ю зі штучним інтелектом для покупця.
+          </p>
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-6 md:p-8">

@@ -27,6 +27,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }),
   ]);
 
+  if (me && me.role === "member" && me.subscriptionPlan === "free") {
+    redirect("/welcome");
+  }
+
   const showVerifyBanner = me && !me.emailVerified;
   const showExpiredBanner =
     me?.subscriptionStatus === "expired" && me.subscriptionPlan !== "free";

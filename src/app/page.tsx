@@ -8,7 +8,16 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const session = await getSession();
-  if (session) redirect("/dashboard");
+  if (session) {
+    const me = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { role: true, subscriptionPlan: true },
+    });
+    if (me?.role === "member" && me.subscriptionPlan === "free") {
+      redirect("/welcome");
+    }
+    redirect("/dashboard");
+  }
 
   const [products, stats] = await Promise.all([
     prisma.product.findMany({
@@ -67,6 +76,10 @@ export default async function Home() {
         <p className="mt-5 md:mt-6 text-base md:text-xl text-zinc-600 dark:text-zinc-400 max-w-2xl mx-auto leading-relaxed">
           Розміщуйте товари та послуги, знаходьте партнерів для співпраці, шукайте підрядників і
           закривайте дефіцити — на одній платформі.
+        </p>
+        <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400 max-w-xl mx-auto">
+          Увійти можна паролем або посиланням на email. Після реєстрації — вибір ролі та оформлення підписки для
+          продавців і підприємців.
         </p>
         <div className="mt-8 md:mt-10 flex items-center justify-center gap-3 flex-wrap">
           <Link
