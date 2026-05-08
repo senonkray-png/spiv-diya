@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { roleLabelUk } from "@/lib/role-labels";
 
 interface UserCardProps {
   user: {
@@ -17,13 +18,6 @@ interface UserCardProps {
   };
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  member: "Учасник",
-  provider: "Постачальник",
-  buyer: "Покупець",
-  admin: "Адмін",
-};
-
 export function UserCard({ user }: UserCardProps) {
   return (
     <Link
@@ -39,7 +33,7 @@ export function UserCard({ user }: UserCardProps) {
             </p>
             {user.verified && <Badge variant="green" size="xs">✓</Badge>}
             {user.role && user.role !== "member" && (
-              <Badge variant="blue" size="xs">{ROLE_LABEL[user.role]}</Badge>
+              <Badge variant="blue" size="xs">{roleLabelUk(user.role)}</Badge>
             )}
           </div>
           <p className="text-xs text-zinc-500 mt-0.5 truncate">

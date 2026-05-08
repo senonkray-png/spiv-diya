@@ -194,10 +194,11 @@ function WithdrawalsTab({ requests }: { requests: Withdrawal[] }) {
 }
 
 const ROLE_OPTS = [
-  { value: "member", label: "Учасник" },
-  { value: "provider", label: "Постачальник" },
+  { value: "member", label: "Новий учасник" },
   { value: "buyer", label: "Покупець" },
-  { value: "admin", label: "Адмін" },
+  { value: "provider", label: "Продавець" },
+  { value: "entrepreneur", label: "Підприємець" },
+  { value: "admin", label: "Адміністратор" },
 ];
 
 function UsersTab({ users }: { users: User[] }) {

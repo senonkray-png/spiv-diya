@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { ResendVerifyButton } from "@/components/auth/ResendVerifyButton";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +24,9 @@ export default async function WelcomePage() {
     },
   });
   if (!user) redirect("/login");
+  if (!user.emailVerified) {
+    redirect(`/register/pending?email=${encodeURIComponent(user.email)}`);
+  }
 
   // If user is admin or already has a subscription, send straight to dashboard
   if (user.role === "admin") redirect("/dashboard");
@@ -43,18 +45,6 @@ export default async function WelcomePage() {
             Оберіть, як ви плануєте користуватись СпівДією. Можна змінити будь-коли в налаштуваннях.
           </p>
         </header>
-
-        {!user.emailVerified && (
-          <div className="mb-6 max-w-3xl mx-auto rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 p-4 flex flex-col md:flex-row md:items-center gap-3">
-            <div className="flex-1">
-              <p className="font-semibold text-amber-900 dark:text-amber-200">Підтвердіть пошту</p>
-              <p className="text-sm text-amber-800/80 dark:text-amber-300/80 mt-1">
-                Ми надіслали лист на <b>{user.email}</b>. Без підтвердження не вдасться отримати оплати на гаманець.
-              </p>
-            </div>
-            <ResendVerifyButton />
-          </div>
-        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <RoleCard

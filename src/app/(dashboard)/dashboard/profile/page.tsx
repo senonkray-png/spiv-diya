@@ -40,7 +40,11 @@ export default async function ProfilePage() {
     facebook: user.facebook ?? "",
     whatsapp: user.whatsapp ?? "",
     acceptsPartners: user.acceptsPartners,
-    role: (user.role === "admin" ? "provider" : user.role) as "member" | "provider" | "buyer",
+    role: (["member", "provider", "buyer"].includes(user.role) ? user.role : "member") as
+      | "member"
+      | "provider"
+      | "buyer",
+    accountRole: user.role,
     interests: user.interests ?? [],
   };
 

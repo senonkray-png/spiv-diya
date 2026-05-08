@@ -22,7 +22,7 @@ export default async function PartnersDirectoryPage({ searchParams }: PageProps)
       { interests: { has: q } },
     ];
   }
-  if (role && ["member", "provider", "buyer"].includes(role)) where.role = role;
+  if (role && ["member", "provider", "buyer", "entrepreneur"].includes(role)) where.role = role;
   if (city) where.city = { contains: city, mode: "insensitive" };
 
   const users = await prisma.user.findMany({
@@ -65,9 +65,10 @@ export default async function PartnersDirectoryPage({ searchParams }: PageProps)
           className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm"
         >
           <option value="">Усі ролі</option>
-          <option value="provider">Постачальники</option>
+          <option value="provider">Продавці</option>
+          <option value="entrepreneur">Підприємці</option>
           <option value="buyer">Покупці</option>
-          <option value="member">Учасники</option>
+          <option value="member">Нові учасники</option>
         </select>
         <input
           name="city"

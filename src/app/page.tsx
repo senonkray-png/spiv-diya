@@ -11,8 +11,11 @@ export default async function Home() {
   if (session) {
     const me = await prisma.user.findUnique({
       where: { id: session.userId },
-      select: { role: true, subscriptionPlan: true },
+      select: { role: true, subscriptionPlan: true, emailVerified: true, email: true },
     });
+    if (me && !me.emailVerified) {
+      redirect(`/register/pending?email=${encodeURIComponent(me.email)}`);
+    }
     if (me?.role === "member" && me.subscriptionPlan === "free") {
       redirect("/welcome");
     }

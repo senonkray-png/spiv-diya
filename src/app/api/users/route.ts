@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     ];
   }
   if (interest) where.interests = { has: interest };
-  if (role && ["member", "provider", "buyer"].includes(role)) where.role = role;
+  if (role && ["member", "provider", "buyer", "entrepreneur"].includes(role)) where.role = role;
   if (city) where.city = { contains: city, mode: "insensitive" };
 
   const users = await prisma.user.findMany({

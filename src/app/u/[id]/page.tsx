@@ -8,17 +8,11 @@ import { ProductCard } from "@/components/market/ProductCard";
 import { ServiceCard } from "@/components/market/ServiceCard";
 import { UserPublicActions } from "@/components/users/UserPublicActions";
 import { RatingPanel } from "@/components/users/RatingPanel";
+import { roleLabelUk } from "@/lib/role-labels";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
-
-const ROLE_LABEL: Record<string, string> = {
-  member: "Учасник",
-  provider: "Постачальник",
-  buyer: "Покупець",
-  admin: "Адмін",
-};
 
 export default async function PublicUserPage({ params }: PageProps) {
   const { id } = await params;
@@ -126,7 +120,7 @@ export default async function PublicUserPage({ params }: PageProps) {
                   {user.city ? ` · ${user.city}, ${user.region}` : ""}
                 </p>
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <Badge variant="blue">{ROLE_LABEL[user.role] ?? user.role}</Badge>
+                  <Badge variant="blue">{roleLabelUk(user.role)}</Badge>
                   {!user.acceptsPartners && (
                     <Badge variant="neutral">Не приймає запити в партнери</Badge>
                   )}

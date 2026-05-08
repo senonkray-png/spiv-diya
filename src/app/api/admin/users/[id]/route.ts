@@ -15,7 +15,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: any = {};
-  if (typeof body?.role === "string" && ["member", "provider", "buyer", "admin"].includes(body.role)) {
+  if (typeof body?.role === "string" && ["member", "provider", "buyer", "entrepreneur", "admin"].includes(body.role)) {
     data.role = body.role;
   }
   if (typeof body?.isActive === "boolean") data.isActive = body.isActive;

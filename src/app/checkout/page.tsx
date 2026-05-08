@@ -23,9 +23,19 @@ export default async function CheckoutPage({
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, email: true, balance: true, subscriptionPlan: true, companyName: true },
+    select: {
+      id: true,
+      email: true,
+      balance: true,
+      subscriptionPlan: true,
+      companyName: true,
+      emailVerified: true,
+    },
   });
   if (!user) redirect("/login");
+  if (!user.emailVerified) {
+    redirect(`/register/pending?email=${encodeURIComponent(user.email)}`);
+  }
 
   const planKey = plan as Exclude<SubscriptionPlan, "free">;
   const price = PLAN_PRICES[planKey];

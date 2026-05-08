@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { roleLabelUk } from "@/lib/role-labels";
+import type { UserRole } from "@/types";
 
 type ProfileForm = {
   companyName: string;
@@ -33,16 +35,20 @@ type ProfileForm = {
 };
 
 const ROLE_OPTIONS = [
-  { value: "member", label: "Учасник (за замовчуванням)" },
-  { value: "provider", label: "Постачальник / Виконавець" },
-  { value: "buyer", label: "Покупець / Шукаю послуги" },
+  { value: "member", label: "Новий учасник (оберіть тариф у кабінеті)" },
+  { value: "provider", label: "Продавець" },
+  { value: "buyer", label: "Покупець" },
 ];
 
 interface Props {
-  initial: ProfileForm & { email: string; balance: number; verified: boolean };
+  initial: ProfileForm & { email: string; balance: number; verified: boolean; accountRole: UserRole };
 }
 
 export function ProfileEditor({ initial }: Props) {
+  const canEditRole = (["member", "provider", "buyer"] as const).includes(
+    initial.accountRole as "member" | "provider" | "buyer",
+  );
+
   const [form, setForm] = useState<ProfileForm>({
     companyName: initial.companyName ?? "",
     fullName: initial.fullName ?? "",
@@ -62,7 +68,9 @@ export function ProfileEditor({ initial }: Props) {
     facebook: initial.facebook ?? "",
     whatsapp: initial.whatsapp ?? "",
     acceptsPartners: initial.acceptsPartners ?? true,
-    role: initial.role,
+    role: canEditRole
+      ? (initial.accountRole as ProfileForm["role"])
+      : ("member" as ProfileForm["role"]),
     interests: initial.interests ?? [],
   });
 
@@ -89,10 +97,13 @@ export function ProfileEditor({ initial }: Props) {
   async function save() {
     setStatus("saving");
     try {
+      const { role, ...rest } = form;
+      const profile = canEditRole ? { ...form } : { ...rest };
+
       const res = await fetch("/api/profile/me", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile: form }),
+        body: JSON.stringify({ profile }),
       });
       if (!res.ok) throw new Error("save failed");
       setStatus("saved");
@@ -117,7 +128,11 @@ export function ProfileEditor({ initial }: Props) {
                 {form.companyName || form.fullName || "Без назви"}
               </h2>
               {initial.verified && <Badge variant="green">Перевірено</Badge>}
-              <Badge variant="blue">{ROLE_OPTIONS.find((r) => r.value === form.role)?.label}</Badge>
+              <Badge variant="blue">
+                {canEditRole
+                  ? ROLE_OPTIONS.find((r) => r.value === form.role)?.label
+                  : roleLabelUk(initial.accountRole)}
+              </Badge>
             </div>
             <p className="text-sm text-zinc-500 mt-1 truncate">{initial.email}</p>
             <p className="text-xs text-zinc-400 mt-0.5">
@@ -129,14 +144,28 @@ export function ProfileEditor({ initial }: Props) {
 
       <Card padding="md">
         <h3 className="font-semibold text-zinc-900 dark:text-white mb-3">Тип акаунту</h3>
-        <Select
-          options={ROLE_OPTIONS}
-          value={form.role}
-          onChange={(e) => update("role", e.target.value as ProfileForm["role"])}
-        />
-        <p className="text-xs text-zinc-500 mt-2">
-          Постачальник може розміщувати товари та послуги. Покупець — шукає партнерів.
-        </p>
+        {canEditRole ? (
+          <>
+            <Select
+              options={ROLE_OPTIONS}
+              value={form.role}
+              onChange={(e) => update("role", e.target.value as ProfileForm["role"])}
+            />
+            <p className="text-xs text-zinc-500 mt-2">
+              Продавець — розміщення товарів і послуг (потрібен тариф). Покупець — пошук і закупівлі.
+              Підприємець оформлюється окремим тарифом на сторінці «Вітаємо».
+            </p>
+          </>
+        ) : (
+          <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 bg-zinc-50 dark:bg-zinc-900/50">
+            <p className="text-sm text-zinc-700 dark:text-zinc-300">
+              Поточна роль: <span className="font-semibold">{roleLabelUk(initial.accountRole)}</span>.
+            </p>
+            <p className="text-xs text-zinc-500 mt-2">
+              Щоб змінити тариф (продавець / підприємець), перейдіть до вибору плану в кабінеті.
+            </p>
+          </div>
+        )}
       </Card>
 
       <Card padding="md">

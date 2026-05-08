@@ -46,7 +46,10 @@ export async function sendEmail({ to, subject, html, text }: SendArgs): Promise<
 }
 
 function appUrl(path: string): string {
-  const base = process.env.NEXTAUTH_URL ?? process.env.VERCEL_URL ?? "http://localhost:3000";
+  const base =
+    process.env.APP_URL ??
+    process.env.NEXTAUTH_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
   const full = base.startsWith("http") ? base : `https://${base}`;
   return `${full.replace(/\/$/, "")}${path}`;
 }

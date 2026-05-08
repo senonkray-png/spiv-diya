@@ -28,6 +28,26 @@ export default function RegisterPage() {
         </div>
 
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl border border-zinc-200 dark:border-zinc-800 p-6 md:p-8">
+          <a
+            href="/api/auth/google"
+            className="flex items-center justify-center gap-3 w-full py-3 px-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100 font-medium text-sm hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+          >
+            <span className="text-lg font-bold text-blue-600">G</span>
+            Швидка реєстрація з Google
+          </a>
+          <p className="text-[11px] text-zinc-400 text-center mt-2 mb-5">
+            Або заповніть форму — на пошту прийде лист із посиланням для підтвердження.
+          </p>
+
+          <div className="relative mb-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-zinc-200 dark:border-zinc-800" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white dark:bg-zinc-900 px-2 text-zinc-400">реєстрація email + пароль</span>
+            </div>
+          </div>
+
           <form action={formAction} className="space-y-3">
             <Input
               label="Назва компанії *"

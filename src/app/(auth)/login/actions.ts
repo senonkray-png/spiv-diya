@@ -5,9 +5,11 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
 
-export async function login(_prev: { error: string }, formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
+export type LoginState = { error?: string; unverifiedEmail?: string };
+
+export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
 
   if (!email || !password) {
     return { error: "Введіть email та пароль." };
@@ -18,9 +20,20 @@ export async function login(_prev: { error: string }, formData: FormData) {
     return { error: "Невірний email або пароль." };
   }
 
+  if (!user.passwordHash) {
+    return { error: "Цей акаунт прив’язаний до Google. Увійдіть кнопкою «Продовжити з Google»." };
+  }
+
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     return { error: "Невірний email або пароль." };
+  }
+
+  if (!user.emailVerified) {
+    return {
+      error: "Спочатку підтвердіть пошту — відкрийте посилання з листа або натисніть «Надіслати лист ще раз».",
+      unverifiedEmail: user.email,
+    };
   }
 
   await createSession({
@@ -30,7 +43,6 @@ export async function login(_prev: { error: string }, formData: FormData) {
     role: user.role,
   });
 
-  // New registrations stay `member` until they pick a role on /welcome — don’t skip them to dashboard.
   if (user.role === "member" && user.subscriptionPlan === "free") {
     redirect("/welcome");
   }
