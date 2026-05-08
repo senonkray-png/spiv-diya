@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 export const dynamic = "force-dynamic";
 
 export default async function MarketplaceHome() {
-  const [products, services, partners, stats] = await Promise.all([
+  const [products, services, partners, posts, stats] = await Promise.all([
     prisma.product.findMany({
       where: { status: "active" },
       orderBy: { createdAt: "desc" },
@@ -38,6 +38,14 @@ export default async function MarketplaceHome() {
         businessNiche: true,
         interests: true,
         verified: true,
+      },
+    }),
+    prisma.post.findMany({
+      where: { status: "active" },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      include: {
+        author: { select: { id: true, companyName: true, avatarUrl: true, businessNiche: true } },
       },
     }),
     prisma.$transaction([
@@ -92,6 +100,35 @@ export default async function MarketplaceHome() {
           </div>
         )}
       </Section>
+
+      {posts.length > 0 && (
+        <Section title="Ідеї та реклама від підприємців" href="/marketplace/posts">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {posts.map((p) => (
+              <Link
+                key={p.id}
+                href={`/marketplace/posts/${p.id}`}
+                className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-4 hover:border-blue-400 hover:shadow-md transition-all block"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Avatar src={p.author.avatarUrl} name={p.author.companyName} size="xs" />
+                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">
+                    {p.author.companyName}
+                  </p>
+                  <span className="text-xs text-zinc-400">·</span>
+                  <p className="text-xs text-zinc-500 truncate">
+                    {p.author.businessNiche ?? "Підприємець"}
+                  </p>
+                </div>
+                <h3 className="font-bold text-zinc-900 dark:text-white text-sm md:text-base line-clamp-2">
+                  {p.title}
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1 line-clamp-2 whitespace-pre-wrap">{p.body}</p>
+              </Link>
+            ))}
+          </div>
+        </Section>
+      )}
 
       <Section title="Послуги та запити" href="/marketplace/services">
         {services.length === 0 ? (

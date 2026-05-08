@@ -9,17 +9,26 @@ interface NavItem {
   label: string;
   icon: (props: { className?: string }) => React.ReactElement;
   adminOnly?: boolean;
+  /**
+   * Roles that should see this item. Undefined = visible to everyone.
+   * Buyers get a minimal set; sellers add product/service/analytics;
+   * entrepreneurs add posts/opportunities/import.
+   */
+  roles?: Array<"buyer" | "provider" | "entrepreneur" | "member" | "admin">;
 }
 
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Огляд", icon: HomeIcon },
-  { href: "/dashboard/products", label: "Товари", icon: BoxIcon },
-  { href: "/dashboard/services", label: "Послуги", icon: BriefcaseIcon },
+  { href: "/dashboard/products", label: "Товари", icon: BoxIcon, roles: ["provider", "entrepreneur", "admin"] },
+  { href: "/dashboard/services", label: "Послуги", icon: BriefcaseIcon, roles: ["provider", "entrepreneur", "admin", "buyer"] },
+  { href: "/dashboard/posts", label: "Пости", icon: PostIcon, roles: ["entrepreneur", "admin"] },
+  { href: "/dashboard/import", label: "Імпорт сайту", icon: ImportIcon, roles: ["entrepreneur", "admin"] },
   { href: "/dashboard/messages", label: "Чати", icon: ChatIcon },
   { href: "/dashboard/partners", label: "Партнери", icon: UsersIcon },
   { href: "/dashboard/favorites", label: "Обране", icon: HeartIcon },
   { href: "/dashboard/wallet", label: "Гаманець", icon: WalletIcon },
-  { href: "/dashboard/opportunities", label: "Можливості", icon: MatchIcon },
+  { href: "/dashboard/opportunities", label: "Можливості", icon: MatchIcon, roles: ["entrepreneur", "admin"] },
+  { href: "/dashboard/analytics", label: "Аналітика", icon: ChartIcon, roles: ["provider", "entrepreneur", "admin"] },
   { href: "/dashboard/profile", label: "Профіль", icon: ProfileIcon },
   { href: "/dashboard/admin", label: "Адмін", icon: ShieldIcon, adminOnly: true },
 ];
@@ -65,7 +74,11 @@ export function Sidebar({
     return () => clearInterval(t);
   }, [refreshUnread]);
 
-  const items = navItems.filter((i) => !i.adminOnly || role === "admin");
+  const items = navItems.filter((i) => {
+    if (i.adminOnly && role !== "admin") return false;
+    if (i.roles && role && !i.roles.includes(role as never)) return false;
+    return true;
+  });
 
   return (
     <>
@@ -337,6 +350,27 @@ function CloseIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  );
+}
+function PostIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  );
+}
+function ImportIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+  );
+}
+function ChartIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
     </svg>
   );
 }

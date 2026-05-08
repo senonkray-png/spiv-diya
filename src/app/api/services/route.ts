@@ -61,6 +61,18 @@ export async function POST(req: NextRequest) {
   const data = body?.service ?? body;
 
   const type = data?.type === "request" ? "request" : "offer";
+
+  // Service "offers" require an active provider/entrepreneur subscription;
+  // "requests" (looking for) are open to everyone — buyers also need them.
+  if (type === "offer") {
+    const allowedRoles = ["provider", "entrepreneur", "admin"];
+    if (!allowedRoles.includes(me.role)) {
+      return NextResponse.json(
+        { error: "Розміщення послуг доступне для планів «Продавець» і «Підприємець»." },
+        { status: 403 },
+      );
+    }
+  }
   const title = String(data?.title ?? "").trim();
   const description = String(data?.description ?? "").trim();
 

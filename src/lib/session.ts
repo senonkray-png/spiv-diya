@@ -7,7 +7,7 @@ const SECRET = new TextEncoder().encode(
 const COOKIE = "spivdia_session";
 const TTL = 60 * 60 * 24 * 7; // 7 days
 
-export type SessionRole = "member" | "provider" | "buyer" | "admin";
+export type SessionRole = "member" | "provider" | "buyer" | "entrepreneur" | "admin";
 
 export interface SessionPayload {
   userId: string;

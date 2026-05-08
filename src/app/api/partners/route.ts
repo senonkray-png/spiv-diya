@@ -45,6 +45,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid target" }, { status: 400 });
   }
 
+  const me = await prisma.user.findUnique({ where: { id: session.userId } });
+  if (!me) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Sellers ("provider" plan) can only ACCEPT partnership invitations,
+  // not initiate them. Buyers and entrepreneurs can initiate freely.
+  if (me.role === "provider") {
+    return NextResponse.json(
+      { error: "Продавці можуть лише приймати запрошення в партнери. Запросити вас можуть підприємці." },
+      { status: 403 },
+    );
+  }
+
   const target = await prisma.user.findUnique({ where: { id: targetId } });
   if (!target) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!target.acceptsPartners) {

@@ -45,7 +45,37 @@ enum UserRole {
   member
   provider
   buyer
+  entrepreneur
   admin
+}
+
+enum SubscriptionPlan {
+  free
+  provider
+  entrepreneur
+}
+
+enum SubscriptionStatus {
+  pending
+  active
+  expired
+  cancelled
+}
+
+enum EmailTokenType {
+  verify
+  magic
+  reset
+}
+
+enum PostStatus {
+  active
+  removed
+}
+
+enum RatingValue {
+  up
+  down
 }
 
 enum ListingStatus {
@@ -94,6 +124,12 @@ enum NotificationType {
   payment_rejected
   withdrawal_approved
   withdrawal_rejected
+  subscription_activated
+  subscription_expiring
+  favorite_new_product
+  favorite_new_post
+  rating_changed
+  email_verified
   system
 }
 
@@ -114,6 +150,20 @@ model User {
   role          UserRole @default(member)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  // Email verification & magic auth
+  emailVerified     Boolean  @default(false)
+  emailVerifiedAt   DateTime?
+
+  // Subscription / paid tier
+  subscriptionPlan       SubscriptionPlan   @default(free)
+  subscriptionStatus     SubscriptionStatus @default(active)
+  subscriptionExpiresAt  DateTime?
+
+  // Cached rating: ratingScore = upvotes − downvotes (with admin penalties)
+  ratingScore       Int      @default(0)
+  ratingUpCount     Int      @default(0)
+  ratingDownCount   Int      @default(0)
 
   // Marketplace profile fields
   fullName      String?
@@ -152,6 +202,17 @@ model User {
   partnersTarget     Partnership[]   @relation("PartnerTarget")
   favoritesByMe      Favorite[]      @relation("FavOwner")
   favoritedBy        Favorite[]      @relation("FavTarget")
+
+  // Posts (entrepreneurs only)
+  posts          Post[]
+
+  // Subscriptions and email tokens
+  subscriptions  Subscription[]
+  emailTokens    EmailToken[]
+
+  // Ratings
+  ratingsGiven      Rating[] @relation("RatingVoter")
+  ratingsReceived   Rating[] @relation("RatingTarget")
 
   // Notifications
   notifications  Notification[]
@@ -430,4 +491,93 @@ model HomeContent {
   locale    String   @id // "uk" | "ru" | "en"
   content   Json     @default("{}")
   updatedAt DateTime @updatedAt
+}
+
+// ─── Email tokens (verification & magic-link sign-in) ─────────────────────────
+
+model EmailToken {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id])
+  email       String
+  token       String         @unique
+  type        EmailTokenType
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime       @default(now())
+
+  @@index([userId, type])
+}
+
+// ─── Subscriptions (paid tiers) ───────────────────────────────────────────────
+
+model Subscription {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id])
+  plan        SubscriptionPlan
+  status      SubscriptionStatus @default(pending)
+  priceUAH    Int
+  priceTokens Int
+  paidWith    String             @default("tokens") // "tokens" | "uah"
+  paymentId   String?            // links to Payment when bought via UAH
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime           @default(now())
+
+  @@index([userId, status])
+}
+
+// ─── Posts (entrepreneur ads / ideas — feed for marketplace) ──────────────────
+
+model Post {
+  id          String     @id @default(cuid())
+  authorId    String
+  author      User       @relation(fields: [authorId], references: [id])
+  title       String
+  body        String     @db.Text
+  images      String[]   @default([])
+  status      PostStatus @default(active)
+  views       Int        @default(0)
+  likes       Int        @default(0)
+  removedReason String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([authorId])
+  @@index([status, createdAt])
+}
+
+// ─── Ratings (peer reputation: 👍 / 👎) ───────────────────────────────────────
+
+model Rating {
+  id           String      @id @default(cuid())
+  voterId      String
+  voter        User        @relation("RatingVoter", fields: [voterId], references: [id])
+  targetUserId String
+  target       User        @relation("RatingTarget", fields: [targetUserId], references: [id])
+  value        RatingValue
+  reason       String?     @db.Text
+  createdAt    DateTime    @default(now())
+
+  @@unique([voterId, targetUserId])
+  @@index([targetUserId])
+}
+
+// ─── Suspicious price activity (auto-flagging product price manipulation) ─────
+
+model PriceLog {
+  id          String   @id @default(cuid())
+  productId   String
+  oldPriceUAH Int?
+  newPriceUAH Int?
+  oldPriceTokens Int
+  newPriceTokens Int
+  delta       Int      // newPrice - oldPrice (in primary currency unit)
+  flagged     Boolean  @default(false)
+  reason      String?  // "spike_up" | "fake_discount" | "rapid_changes"
+  createdAt   DateTime @default(now())
+
+  @@index([productId, createdAt])
 }

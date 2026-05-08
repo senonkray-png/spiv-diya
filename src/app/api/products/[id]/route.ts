@@ -60,7 +60,74 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     update.status = data.status;
   }
 
+  const oldTokens = product.priceTokens;
+  const oldUAH = product.priceUAH;
   const updated = await prisma.product.update({ where: { id }, data: update });
+
+  // Track price changes for suspicious-pricing detector
+  const newTokens = updated.priceTokens;
+  const newUAH = updated.priceUAH;
+  const tokensChanged = newTokens !== oldTokens;
+  const uahChanged = newUAH !== oldUAH;
+  if (tokensChanged || uahChanged) {
+    const primaryOld = oldUAH ?? oldTokens;
+    const primaryNew = newUAH ?? newTokens;
+    const delta = primaryNew - primaryOld;
+    let flagged = false;
+    let reason: string | null = null;
+
+    if (primaryOld > 0) {
+      const pct = (Math.abs(delta) / primaryOld) * 100;
+      if (delta > 0 && pct > 50) {
+        flagged = true;
+        reason = "spike_up";
+      }
+    }
+
+    // Detect rapid changes — more than 3 changes in last 24h
+    const recent = await prisma.priceLog.count({
+      where: { productId: id, createdAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } },
+    });
+    if (recent >= 3) {
+      flagged = true;
+      reason = reason ?? "rapid_changes";
+    }
+
+    await prisma.priceLog.create({
+      data: {
+        productId: id,
+        oldPriceTokens: oldTokens,
+        newPriceTokens: newTokens,
+        oldPriceUAH: oldUAH,
+        newPriceUAH: newUAH,
+        delta,
+        flagged,
+        reason,
+      },
+    });
+
+    if (flagged && !isAdmin) {
+      // Penalise the seller's rating: -1 for spike, -2 for rapid changes
+      const penalty = reason === "rapid_changes" ? -2 : -1;
+      await prisma.user.update({
+        where: { id: product.ownerId },
+        data: { ratingScore: { increment: penalty } },
+      });
+      await prisma.notification.create({
+        data: {
+          userId: product.ownerId,
+          type: "rating_changed",
+          title: "Підозріла зміна ціни",
+          body:
+            reason === "rapid_changes"
+              ? "Занадто часті зміни ціни — рейтинг зменшено."
+              : "Різке підвищення ціни — рейтинг зменшено.",
+          link: `/dashboard/products`,
+        },
+      });
+    }
+  }
+
   return NextResponse.json({ product: updated });
 }
 

@@ -10,6 +10,39 @@ export async function getCurrentUser() {
   const session = await getSession();
   if (!session) return null;
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
+  if (!user) return null;
+
+  // Lazy-expire subscriptions: if the paid plan ran out, downgrade to free.
+  if (
+    user.subscriptionPlan !== "free" &&
+    user.subscriptionExpiresAt &&
+    user.subscriptionExpiresAt < new Date()
+  ) {
+    const downgraded = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        subscriptionPlan: "free",
+        subscriptionStatus: "expired",
+        // Keep role for buyers; demote sellers/entrepreneurs to "buyer"
+        role: user.role === "admin" ? "admin" : "buyer",
+      },
+    });
+    await prisma.subscription.updateMany({
+      where: { userId: user.id, status: "active" },
+      data: { status: "expired" },
+    });
+    await prisma.notification.create({
+      data: {
+        userId: user.id,
+        type: "subscription_expiring",
+        title: "Підписка завершилась",
+        body: "Поновіть підписку, щоб знов мати доступ до повних можливостей.",
+        link: "/checkout?plan=" + (user.subscriptionPlan as string),
+      },
+    });
+    return downgraded;
+  }
+
   return user;
 }
 

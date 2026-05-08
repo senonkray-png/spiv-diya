@@ -9,7 +9,18 @@ export type ResourceCategory =
   | "marketing"
   | "workforce";
 
-export type UserRole = "member" | "provider" | "buyer" | "admin";
+export type UserRole = "member" | "provider" | "buyer" | "entrepreneur" | "admin";
+
+export type SubscriptionPlan = "free" | "provider" | "entrepreneur";
+export type SubscriptionStatus = "pending" | "active" | "expired" | "cancelled";
+export type EmailTokenType = "verify" | "magic" | "reset";
+export type PostStatus = "active" | "removed";
+export type RatingValue = "up" | "down";
+
+export const PLAN_PRICES: Record<Exclude<SubscriptionPlan, "free">, { uah: number; tokens: number }> = {
+  provider: { uah: 1000, tokens: 1000 },
+  entrepreneur: { uah: 3000, tokens: 3000 },
+};
 
 export interface Resource {
   id: string;
@@ -209,6 +220,12 @@ export type NotificationType =
   | "payment_rejected"
   | "withdrawal_approved"
   | "withdrawal_rejected"
+  | "subscription_activated"
+  | "subscription_expiring"
+  | "favorite_new_product"
+  | "favorite_new_post"
+  | "rating_changed"
+  | "email_verified"
   | "system";
 
 export interface Notification {
@@ -236,5 +253,46 @@ export interface Deal {
   terms: string;
   pdfUrl?: string;
   chatId?: string;
+  createdAt: string;
+}
+
+// ─── Posts (entrepreneur ad/idea posts on the marketplace feed) ───────────────
+
+export interface Post {
+  id: string;
+  authorId: string;
+  title: string;
+  body: string;
+  images: string[];
+  status: PostStatus;
+  views: number;
+  likes: number;
+  createdAt: string;
+}
+
+// ─── Subscriptions ────────────────────────────────────────────────────────────
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  priceUAH: number;
+  priceTokens: number;
+  paidWith: "tokens" | "uah";
+  paymentId?: string | null;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+}
+
+// ─── Ratings ──────────────────────────────────────────────────────────────────
+
+export interface Rating {
+  id: string;
+  voterId: string;
+  targetUserId: string;
+  value: RatingValue;
+  reason?: string | null;
   createdAt: string;
 }

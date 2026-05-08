@@ -103,6 +103,14 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
+  // Gate AI onboarding behind entrepreneur tier
+  if (user.role !== "entrepreneur" && user.role !== "admin") {
+    return NextResponse.json(
+      { error: "Інтерв'ю з ШІ-агентом доступне для плану «Підприємець»." },
+      { status: 403 },
+    );
+  }
+
   let onboarding = await prisma.onboardingSession.findUnique({
     where: { userId: session.userId },
   });

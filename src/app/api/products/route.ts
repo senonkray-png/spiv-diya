@@ -57,6 +57,14 @@ export async function POST(req: NextRequest) {
   if (!me) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!me.isActive) return NextResponse.json({ error: "Account is not active" }, { status: 403 });
 
+  const allowedRoles = ["provider", "entrepreneur", "admin"];
+  if (!allowedRoles.includes(me.role)) {
+    return NextResponse.json(
+      { error: "Розміщення товарів доступне для планів «Продавець» і «Підприємець». Активуйте підписку." },
+      { status: 403 },
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
   const data = body?.product ?? body;
 
@@ -86,6 +94,25 @@ export async function POST(req: NextRequest) {
       externalId: data?.externalId ? String(data.externalId).slice(0, 200) : null,
     },
   });
+
+  // Notify users who favorited this seller — their feed should highlight the new product
+  const followers = await prisma.favorite.findMany({
+    where: { userId: me.id },
+    select: { ownerId: true },
+  });
+  if (followers.length > 0) {
+    await prisma.notification.createMany({
+      data: followers.map((f) => ({
+        userId: f.ownerId,
+        type: "favorite_new_product",
+        title: `Новий товар від ${me.companyName}`,
+        body: title.slice(0, 120),
+        entityType: "product",
+        entityId: product.id,
+        link: `/marketplace/products/${product.id}`,
+      })),
+    });
+  }
 
   return NextResponse.json({ product });
 }

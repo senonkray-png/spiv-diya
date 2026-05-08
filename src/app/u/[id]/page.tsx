@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ProductCard } from "@/components/market/ProductCard";
 import { ServiceCard } from "@/components/market/ServiceCard";
 import { UserPublicActions } from "@/components/users/UserPublicActions";
+import { RatingPanel } from "@/components/users/RatingPanel";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -140,6 +141,10 @@ export default async function PublicUserPage({ params }: PageProps) {
               partnership={partnership}
               isFav={isFav}
             />
+          </div>
+
+          <div className="mt-6">
+            <RatingPanel targetUserId={user.id} isLogged={isLogged} isMe={isMe} />
           </div>
 
           {user.aboutMe && (

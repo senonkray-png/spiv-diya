@@ -4,19 +4,22 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
+import { sendVerificationEmail } from "@/lib/email";
 
 export async function register(_prev: { error: string }, formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const companyName = formData.get("companyName") as string;
-  const industry = formData.get("industry") as string;
-  const city = formData.get("city") as string;
-  const region = formData.get("region") as string;
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const companyName = String(formData.get("companyName") ?? "").trim();
+  const industry = String(formData.get("industry") ?? "").trim();
+  const city = String(formData.get("city") ?? "").trim();
+  const region = String(formData.get("region") ?? "").trim();
 
   if (!email || !password || !companyName || !industry || !city || !region) {
     return { error: "Будь ласка, заповніть усі поля." };
   }
-
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    return { error: "Некоректний email." };
+  }
   if (password.length < 8) {
     return { error: "Пароль має бути мінімум 8 символів." };
   }
@@ -28,7 +31,6 @@ export async function register(_prev: { error: string }, formData: FormData) {
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  // First user becomes admin automatically (bootstrap convenience)
   const userCount = await prisma.user.count();
   const role = userCount === 0 ? "admin" : "member";
 
@@ -36,11 +38,18 @@ export async function register(_prev: { error: string }, formData: FormData) {
     data: { email, passwordHash, companyName, industry, city, region, role },
   });
 
+  // Send email verification (non-blocking — even if email fails, user can resend later)
+  try {
+    await sendVerificationEmail(user.id, user.email, user.companyName);
+  } catch (err) {
+    console.error("Email verification send failed:", err);
+  }
+
   await createSession({
     userId: user.id,
     email: user.email,
     companyName: user.companyName,
     role: user.role,
   });
-  redirect("/onboarding");
+  redirect("/welcome");
 }
