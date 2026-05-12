@@ -16,17 +16,17 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center font-medium rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
+    "inline-flex items-center justify-center font-medium rounded-xl transition-[color,transform,box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed motion-safe:hover:scale-[1.02] motion-reduce:hover:scale-100 active:scale-[0.98]";
 
   const variants = {
     primary:
-      "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
+      "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm hover:shadow-md",
     secondary:
-      "bg-zinc-100 text-zinc-900 hover:bg-zinc-200 focus:ring-zinc-400 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700",
+      "bg-muted text-foreground border border-border hover:bg-muted/80 focus-visible:ring-offset-background",
     ghost:
-      "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 focus:ring-zinc-400 dark:text-zinc-400 dark:hover:text-zinc-100 dark:hover:bg-zinc-800",
+      "text-muted-foreground hover:text-foreground hover:bg-muted/60 focus-visible:ring-offset-background",
     danger:
-      "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
+      "bg-destructive text-destructive-foreground hover:opacity-90 focus-visible:ring-destructive",
   };
 
   const sizes = {

@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
 
-export type LoginState = { error?: string; unverifiedEmail?: string };
+export type LoginState = { error?: string };
 
 export async function login(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -21,19 +21,14 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
   }
 
   if (!user.passwordHash) {
-    return { error: "Цей акаунт прив’язаний до Google. Увійдіть кнопкою «Продовжити з Google»." };
+    return {
+      error: "Для цього акаунта не задано пароль. Зверніться до підтримки або зареєструйтесь знову.",
+    };
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     return { error: "Невірний email або пароль." };
-  }
-
-  if (!user.emailVerified) {
-    return {
-      error: "Спочатку підтвердіть пошту — відкрийте посилання з листа або натисніть «Надіслати лист ще раз».",
-      unverifiedEmail: user.email,
-    };
   }
 
   await createSession({

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 interface NavItem {
   href: string;
@@ -128,7 +129,11 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="px-3 py-4 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="px-3 py-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+          <div className="flex items-center gap-3 px-1">
+            <ThemeToggle />
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-tight">Тема</span>
+          </div>
           <form action="/api/auth/logout" method="POST">
             <button
               type="submit"
@@ -142,17 +147,21 @@ export function Sidebar({
       </aside>
 
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 h-14">
-        <Link href="/" className="font-bold text-zinc-900 dark:text-white">СпівДія</Link>
-        <button
-          onClick={() => setOpen(true)}
-          className="p-2 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 relative"
-        >
-          <MenuIcon className="w-5 h-5" />
-          {unread > 0 && (
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
-          )}
-        </button>
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 h-14 gap-2">
+        <Link href="/" className="font-bold text-zinc-900 dark:text-white shrink-0">СпівДія</Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="relative shrink-0 rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+          >
+            <MenuIcon className="w-5 h-5" />
+            {unread > 0 && (
+              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Mobile drawer */}
@@ -210,7 +219,11 @@ export function Sidebar({
           })}
         </nav>
 
-        <div className="px-3 py-4 border-t border-zinc-200 dark:border-zinc-800">
+        <div className="px-3 py-4 border-t border-zinc-200 dark:border-zinc-800 space-y-3">
+          <div className="flex items-center gap-3 px-1">
+            <ThemeToggle />
+            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-tight">Тема</span>
+          </div>
           <form action="/api/auth/logout" method="POST">
             <button
               type="submit"

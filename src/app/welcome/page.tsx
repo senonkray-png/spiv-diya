@@ -19,14 +19,10 @@ export default async function WelcomePage() {
       email: true,
       companyName: true,
       role: true,
-      emailVerified: true,
       subscriptionPlan: true,
     },
   });
   if (!user) redirect("/login");
-  if (!user.emailVerified) {
-    redirect(`/register/pending?email=${encodeURIComponent(user.email)}`);
-  }
 
   // If user is admin or already has a subscription, send straight to dashboard
   if (user.role === "admin") redirect("/dashboard");

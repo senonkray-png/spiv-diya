@@ -1,12 +1,13 @@
 import type { HTMLAttributes } from "react";
 
 interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: "neutral" | "blue" | "green" | "orange" | "red" | "purple" | "amber";
+  variant?: "neutral" | "primary" | "blue" | "green" | "orange" | "red" | "purple" | "amber";
   size?: "xs" | "sm";
 }
 
 const variants: Record<NonNullable<BadgeProps["variant"]>, string> = {
-  neutral: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300",
+  neutral: "bg-muted text-muted-foreground",
+  primary: "bg-primary/12 text-primary dark:bg-primary/20 dark:text-sky-200",
   blue: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
   green: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
   orange: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",

@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
+import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+import { THEME_STORAGE_KEY } from "@/lib/theme";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin", "cyrillic"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
@@ -23,11 +27,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="uk"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="uk" suppressHydrationWarning className={`${inter.variable} ${geistMono.variable} h-full`}>
+      <body className="min-h-full flex flex-col">
+        <Script id="spivdia-theme-init" strategy="beforeInteractive">
+          {`(function(){try{var k=localStorage.getItem("${THEME_STORAGE_KEY}");var p=window.matchMedia("(prefers-color-scheme: dark)").matches;var d=k==="dark"||(k!=="light"&&p);document.documentElement.classList.toggle("dark",d);}catch(e){}})();`}
+        </Script>
+        {children}
+      </body>
     </html>
   );
 }

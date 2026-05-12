@@ -6,9 +6,6 @@ export const dynamic = "force-dynamic";
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!user.emailVerified) {
-    redirect(`/register/pending?email=${encodeURIComponent(user.email)}`);
-  }
 
   // AI onboarding is reserved for the entrepreneur tier (per pricing).
   // Admins always have access; other roles get sent through /welcome.

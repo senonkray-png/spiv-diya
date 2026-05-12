@@ -1,0 +1,101 @@
+/**
+ * СпівДія — дизайн-токени (Foundation)
+ *
+ * Tailwind CSS 4: семантичні кольори підключені до @theme нижче
+ * як --color-{name}, тож доступні утиліті класи bg-primary, text-accent тощо.
+ */
+
+:root {
+  /* Базові поверхні (світла тема) */
+  --background: #f8f9fa;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #1a4b84;
+
+  /* Бренд */
+  --primary: #1a4b84;
+  --primary-foreground: #ffffff;
+  --primary-hover: #153d6e;
+  --accent: #f9d423;
+  --accent-foreground: #1a1706;
+
+  /* Стани */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  color-scheme: light;
+
+  /* Тінь для карток (світла тема); у dark переозначимо нижче */
+  --elevation-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px rgb(15 23 42 / 0.06);
+  --elevation-card-hover: 0 4px 12px rgb(15 23 42 / 0.1), 0 16px 40px rgb(26 75 132 / 0.08);
+}
+
+/* Темна тема: клас `.dark` на <html> (ThemeToggle + script у layout). */
+:root.dark {
+  --background: #0c1017;
+  --foreground: #f1f5f9;
+  --card: #121822;
+  --card-foreground: #f1f5f9;
+  --muted: #1a2332;
+  --muted-foreground: #94a3b8;
+  --border: #263042;
+  --input: #263042;
+  --ring: #5b9bd8;
+
+  --primary: #3d7fc4;
+  --primary-foreground: #04101f;
+  --primary-hover: #2f6aae;
+  --accent: #f9d423;
+  --accent-foreground: #1a1706;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  color-scheme: dark;
+
+  --elevation-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 8px 28px rgb(0 0 0 / 0.45);
+  --elevation-card-hover: 0 8px 28px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+/*
+ * Карточний радіус: базовий «м’який» блок ≈ 1rem (мінімалізм Bento-подібний)
+ */
+@theme inline {
+  /* Типографіка */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Семантичні кольори → Tailwind утиліті */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Основний радіус кутів (~1rem) для карток і кнопок */
+  --radius-lg: 0.875rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.25rem;
+
+  /* Тінь для Bento / карток → shadow-card утиліта */
+  --shadow-card: var(--elevation-card);
+  --shadow-card-hover: var(--elevation-card-hover);
+}

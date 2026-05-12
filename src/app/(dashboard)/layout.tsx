@@ -14,8 +14,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       select: {
         role: true,
         companyName: true,
-        email: true,
-        emailVerified: true,
         subscriptionPlan: true,
         subscriptionStatus: true,
         subscriptionExpiresAt: true,
@@ -25,10 +23,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
       where: { receiverId: session.userId, read: false },
     }),
   ]);
-
-  if (me && !me.emailVerified) {
-    redirect(`/register/pending?email=${encodeURIComponent(me.email)}`);
-  }
 
   if (me && me.role === "member" && me.subscriptionPlan === "free") {
     redirect("/welcome");

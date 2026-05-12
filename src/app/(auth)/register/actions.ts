@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
-import { sendVerificationEmail } from "@/lib/email";
 import { createSession } from "@/lib/session";
 
 export async function register(_prev: { error: string }, formData: FormData) {
@@ -26,9 +25,6 @@ export async function register(_prev: { error: string }, formData: FormData) {
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    if (existing.googleId && !existing.passwordHash) {
-      return { error: "Цей email зареєстровано через Google. Увійдіть кнопкою «Google»." };
-    }
     return { error: "Акаунт з таким email вже існує." };
   }
 
@@ -46,26 +42,21 @@ export async function register(_prev: { error: string }, formData: FormData) {
       city,
       region,
       role,
-      emailVerified: role === "admin",
-      emailVerifiedAt: role === "admin" ? new Date() : null,
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
     },
   });
 
+  await createSession({
+    userId: user.id,
+    email: user.email,
+    companyName: user.companyName,
+    role: user.role,
+  });
+
   if (role === "admin") {
-    await createSession({
-      userId: user.id,
-      email: user.email,
-      companyName: user.companyName,
-      role: user.role,
-    });
     redirect("/dashboard");
   }
 
-  try {
-    await sendVerificationEmail(user.id, user.email, user.companyName);
-  } catch (err) {
-    console.error("Email verification send failed:", err);
-  }
-
-  redirect(`/register/pending?email=${encodeURIComponent(email)}`);
+  redirect("/welcome");
 }

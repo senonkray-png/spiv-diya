@@ -8,7 +8,7 @@ export function Card({ className = "", padding = "md", children, ...props }: Car
   const paddings = { sm: "p-4", md: "p-6", lg: "p-8" };
   return (
     <div
-      className={`rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${paddings[padding]} ${className}`}
+      className={`rounded-xl border border-border bg-card text-card-foreground shadow-card transition-shadow hover:shadow-card-hover ${paddings[padding]} ${className}`}
       {...props}
     >
       {children}
