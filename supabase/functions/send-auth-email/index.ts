@@ -1,17 +1,17 @@
 /**
- * Edge Function: надсилання листів з додатку (підтвердження пошти тощо).
+ * Edge Function: надсилання HTML-листів через SMTP (секрети в Supabase → Edge Functions → Secrets).
  *
- * Секрети в Supabase → Project Settings → Edge Functions → Secrets:
- *   RESEND_API_KEY   — якщо відправляєте через Resend з функції
- *   EMAIL_FROM       — опційно, напр. "СпівДія <noreply@ваш-домен>"
+ * Обовʼязкові secrets:
+ *   SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM
+ * Опційні:
+ *   SMTP_PORT (за замовчуванням 587)
+ *   SMTP_SECURE — "true" для порту 465 (SSL)
  *
- * Деплой: `supabase functions deploy send-auth-email`
- *
- * Виклик з Next.js: див. `sendViaSupabaseEdge` у src/lib/email.ts
- * (Authorization: Bearer SUPABASE_SERVICE_ROLE_KEY).
+ * Деплой: supabase functions deploy send-auth-email
  */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import nodemailer from "npm:nodemailer@6.9.16";
 
 type Payload = { to: string; subject: string; html: string; text?: string };
 
@@ -40,37 +40,43 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const resendKey = Deno.env.get("RESEND_API_KEY")?.trim();
-  if (!resendKey) {
+  const host = Deno.env.get("SMTP_HOST")?.trim();
+  const user = Deno.env.get("SMTP_USER")?.trim();
+  const pass = Deno.env.get("SMTP_PASS")?.trim();
+  const from = Deno.env.get("EMAIL_FROM")?.trim();
+
+  if (!host || !user || !pass || !from) {
     return new Response(
       JSON.stringify({
-        error: "RESEND_API_KEY is not set in Edge Function secrets. Add it in Supabase Dashboard.",
+        error:
+          "Missing SMTP secrets. Set SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM in Supabase (Edge Function secrets).",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 
-  const from = Deno.env.get("EMAIL_FROM")?.trim() ?? "СпівДія <onboarding@resend.dev>";
+  const port = Number(Deno.env.get("SMTP_PORT")?.trim() || "587");
+  const secure = Deno.env.get("SMTP_SECURE")?.trim() === "true" || port === 465;
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  const transport = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+  });
+
+  try {
+    await transport.sendMail({
       from,
       to: body.to,
       subject: body.subject,
       html: body.html,
       text: body.text,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.error("Resend from Edge failed:", res.status, err);
-    return new Response(JSON.stringify({ ok: false, status: res.status, detail: err }), {
+    });
+  } catch (e) {
+    console.error("SMTP send failed:", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return new Response(JSON.stringify({ ok: false, error: "smtp_send_failed", detail: msg }), {
       status: 502,
       headers: { "Content-Type": "application/json" },
     });

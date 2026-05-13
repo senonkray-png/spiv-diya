@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 
-export function ResendVerifyButton() {
+export function VerifyEmailAgainButton() {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  async function resend() {
+  async function sendAgain() {
     setState("sending");
     try {
-      const res = await fetch("/api/auth/verify-resend", { method: "POST" });
+      const res = await fetch("/api/auth/send-verification", { method: "POST" });
       setState(res.ok ? "sent" : "error");
     } catch {
       setState("error");
@@ -21,7 +21,7 @@ export function ResendVerifyButton() {
   }
 
   return (
-    <Button onClick={resend} loading={state === "sending"} variant="secondary" size="sm">
+    <Button onClick={sendAgain} loading={state === "sending"} variant="secondary" size="sm">
       Надіслати ще раз
     </Button>
   );

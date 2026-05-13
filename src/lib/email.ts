@@ -13,7 +13,6 @@ interface SendArgs {
 export function isOutboundEmailConfigured(): boolean {
   if (process.env.EMAIL_WEBHOOK_URL?.trim()) return true;
   if (supabaseEdgeSendConfigured()) return true;
-  if (process.env.RESEND_API_KEY?.trim()) return true;
   return false;
 }
 
@@ -50,8 +49,8 @@ async function sendViaWebhook(args: SendArgs): Promise<{ ok: boolean; provider: 
 }
 
 /**
- * Виклик Edge Function у Supabase (наприклад `send-auth-email`).
- * У Vercel: SUPABASE_URL або NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.
+ * Виклик Edge Function у Supabase (`send-auth-email` надсилає лист через SMTP; секрети — у Supabase).
+ * У Vercel: SUPABASE_URL або NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (+ anon для apikey).
  */
 async function sendViaSupabaseEdge(args: SendArgs): Promise<{ ok: boolean; provider: "supabase" }> {
   const baseRaw = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim();
@@ -71,7 +70,6 @@ async function sendViaSupabaseEdge(args: SendArgs): Promise<{ ok: boolean; provi
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${serviceRole}`,
-      /** У документації Supabase для REST/Functions часто потрібні обидва ключі. */
       apikey: anonKey,
     },
     body: JSON.stringify(args),
@@ -84,50 +82,17 @@ async function sendViaSupabaseEdge(args: SendArgs): Promise<{ ok: boolean; provi
   return { ok: res.ok, provider: "supabase" };
 }
 
-async function sendViaResend(args: SendArgs): Promise<{ ok: boolean; provider: "resend" }> {
-  const apiKey = process.env.RESEND_API_KEY!.trim();
-  const from = process.env.EMAIL_FROM ?? "СпівДія <onboarding@resend.dev>";
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from, to: args.to, subject: args.subject, html: args.html, text: args.text }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.error("Resend send failed:", res.status, err);
-    return { ok: false, provider: "resend" };
-  }
-  return { ok: true, provider: "resend" };
-}
-
 /**
- * Порядок: webhook → Resend (Vercel) → Supabase Edge → консоль (dev).
- * Resend перед Supabase: інтеграція Supabase у Vercel часто додає URL/ключі, але функцію ще не задеплоєно —
- * тоді листи все одно йдуть через Resend.
+ * Порядок: власний webhook → Supabase Edge Function → консоль (лише dev).
  */
 export async function sendEmail({
   to,
   subject,
   html,
   text,
-}: SendArgs): Promise<{ ok: boolean; provider: "webhook" | "supabase" | "resend" | "console" }> {
+}: SendArgs): Promise<{ ok: boolean; provider: "webhook" | "supabase" | "console" }> {
   if (process.env.EMAIL_WEBHOOK_URL?.trim()) {
     return sendViaWebhook({ to, subject, html, text });
-  }
-
-  if (process.env.RESEND_API_KEY?.trim()) {
-    const r = await sendViaResend({ to, subject, html, text });
-    if (r.ok) return r;
-    if (supabaseEdgeSendConfigured()) {
-      const s = await sendViaSupabaseEdge({ to, subject, html, text });
-      if (s.ok) return s;
-    }
-    return r;
   }
 
   if (supabaseEdgeSendConfigured()) {

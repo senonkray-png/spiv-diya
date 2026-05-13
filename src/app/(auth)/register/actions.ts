@@ -32,7 +32,7 @@ export async function register(_prev: { error: string }, formData: FormData) {
   if (process.env.NODE_ENV === "production" && !isOutboundEmailConfigured()) {
     return {
       error:
-        "Реєстрація недоступна: не налаштовано відправку пошти. У Vercel задайте один із варіантів: Supabase Edge (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + задеплоєна функція send-auth-email), або EMAIL_WEBHOOK_URL, або RESEND_API_KEY.",
+        "Реєстрація недоступна: не налаштовано відправку пошти. У Vercel задайте EMAIL_WEBHOOK_URL або пару SUPABASE_URL (або NEXT_PUBLIC_SUPABASE_URL) + SUPABASE_SERVICE_ROLE_KEY і задеплойте Edge Function send-auth-email з SMTP-секретами в Supabase.",
     };
   }
 
@@ -73,7 +73,7 @@ export async function register(_prev: { error: string }, formData: FormData) {
     await prisma.user.delete({ where: { id: user.id } });
     return {
       error:
-        "Не вдалось надіслати лист. Додайте у Vercel RESEND_API_KEY + EMAIL_FROM, або задеплойте Edge Function send-auth-email у Supabase з секретами RESEND_API_KEY/EMAIL_FROM і задайте SUPABASE_SERVICE_ROLE_KEY. Деталі — у логах сервера (Vercel → Logs).",
+        "Не вдалось надіслати лист. Перевірте SMTP-секрети функції send-auth-email у Supabase, змінні SUPABASE_* у Vercel, або EMAIL_WEBHOOK_URL. Деталі — у логах (Vercel → Logs, Supabase → Edge Functions → Logs).",
     };
   }
 

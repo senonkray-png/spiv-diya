@@ -11,6 +11,9 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (user.emailVerified) return NextResponse.json({ ok: true, alreadyVerified: true });
 
-  await sendVerificationEmail(user.id, user.email, user.companyName);
+  const sent = await sendVerificationEmail(user.id, user.email, user.companyName);
+  if (!sent.ok) {
+    return NextResponse.json({ error: "send_failed" }, { status: 502 });
+  }
   return NextResponse.json({ ok: true });
 }

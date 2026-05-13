@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 
-export function ResendVerifyOpenButton({ email }: { email: string }) {
+export function VerifyEmailAgainOpenButton({ email }: { email: string }) {
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
-  async function resend() {
+  async function sendAgain() {
     setState("sending");
     try {
-      const res = await fetch("/api/auth/verify-resend-open", {
+      const res = await fetch("/api/auth/send-verification-open", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -25,7 +25,7 @@ export function ResendVerifyOpenButton({ email }: { email: string }) {
   }
 
   return (
-    <Button onClick={resend} loading={state === "sending"} variant="secondary" size="sm">
+    <Button onClick={sendAgain} loading={state === "sending"} variant="secondary" size="sm">
       Надіслати лист ще раз
     </Button>
   );

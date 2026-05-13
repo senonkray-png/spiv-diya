@@ -2,8 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { ResendVerifyButton } from "@/components/auth/ResendVerifyButton";
-import { ResendVerifyOpenButton } from "@/components/auth/ResendVerifyOpenButton";
+import { VerifyEmailAgainButton } from "@/components/auth/VerifyEmailAgainButton";
+import { VerifyEmailAgainOpenButton } from "@/components/auth/VerifyEmailAgainOpenButton";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +49,7 @@ export default async function RegisterPendingPage({
           налаштування кнопки в консолі Google Cloud.
         </p>
         <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center items-center">
-          {session ? <ResendVerifyButton /> : <ResendVerifyOpenButton email={email} />}
+          {session ? <VerifyEmailAgainButton /> : <VerifyEmailAgainOpenButton email={email} />}
         </div>
         <div className="mt-4">
           {!session && (
