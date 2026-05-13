@@ -1,0 +1,4 @@
+# Локальна конфігурація CLI (опційно). Деплой функції: supabase functions deploy send-auth-email
+
+[functions.send-auth-email]
+verify_jwt = true

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
-import { sendVerificationEmail } from "@/lib/email";
+import { isOutboundEmailConfigured, sendVerificationEmail } from "@/lib/email";
 
 export async function register(_prev: { error: string }, formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -29,16 +29,15 @@ export async function register(_prev: { error: string }, formData: FormData) {
     return { error: "Акаунт з таким email вже існує." };
   }
 
-  const hasResend = Boolean(process.env.RESEND_API_KEY?.trim());
-  if (process.env.NODE_ENV === "production" && !hasResend) {
+  if (process.env.NODE_ENV === "production" && !isOutboundEmailConfigured()) {
     return {
       error:
-        "Реєстрація недоступна: у production не задано RESEND_API_KEY. Додайте ключ у Vercel → Environment Variables.",
+        "Реєстрація недоступна: не налаштовано відправку пошти. У Vercel задайте один із варіантів: Supabase Edge (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + задеплоєна функція send-auth-email), або EMAIL_WEBHOOK_URL, або RESEND_API_KEY.",
     };
   }
 
-  /** Локально без Resend — одразу «підтверджуємо», щоб можна було розробляти без пошти. */
-  const skipEmailVerify = process.env.NODE_ENV !== "production" && !hasResend;
+  /** Локально без пошти — одразу «підтверджуємо» для зручності розробки. */
+  const skipEmailVerify = process.env.NODE_ENV !== "production" && !isOutboundEmailConfigured();
 
   const passwordHash = await bcrypt.hash(password, 12);
 
@@ -74,7 +73,7 @@ export async function register(_prev: { error: string }, formData: FormData) {
     await prisma.user.delete({ where: { id: user.id } });
     return {
       error:
-        "Не вдалось надіслати лист підтвердження. Перевірте RESEND_API_KEY, домен відправника в Resend та змінну EMAIL_FROM (наприклад «СпівДія <noreply@ваш-домен>»).",
+        "Не вдалось надіслати лист підтвердження. Перевірте: деплой Edge Function у Supabase, секрети RESEND_API_KEY/EMAIL_FROM у функції, у Vercel — SUPABASE_URL та SUPABASE_SERVICE_ROLE_KEY, або налаштуйте Resend / EMAIL_WEBHOOK_URL.",
     };
   }
 
