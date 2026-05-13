@@ -61,12 +61,18 @@ async function sendViaSupabaseEdge(args: SendArgs): Promise<{ ok: boolean; provi
   const base = baseRaw.replace(/\/$/, "");
   const fn = process.env.SUPABASE_SEND_EMAIL_FUNCTION?.trim() || "send-auth-email";
   const url = `${base}/functions/v1/${fn}`;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ??
+    process.env.SUPABASE_ANON_KEY?.trim() ??
+    serviceRole;
 
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${serviceRole}`,
+      /** У документації Supabase для REST/Functions часто потрібні обидва ключі. */
+      apikey: anonKey,
     },
     body: JSON.stringify(args),
   });
@@ -100,7 +106,9 @@ async function sendViaResend(args: SendArgs): Promise<{ ok: boolean; provider: "
 }
 
 /**
- * Порядок: власний webhook → Supabase Edge Function → Resend → консоль (dev).
+ * Порядок: webhook → Resend (Vercel) → Supabase Edge → консоль (dev).
+ * Resend перед Supabase: інтеграція Supabase у Vercel часто додає URL/ключі, але функцію ще не задеплоєно —
+ * тоді листи все одно йдуть через Resend.
  */
 export async function sendEmail({
   to,
@@ -111,17 +119,19 @@ export async function sendEmail({
   if (process.env.EMAIL_WEBHOOK_URL?.trim()) {
     return sendViaWebhook({ to, subject, html, text });
   }
-  if (supabaseEdgeSendConfigured()) {
-    const r = await sendViaSupabaseEdge({ to, subject, html, text });
+
+  if (process.env.RESEND_API_KEY?.trim()) {
+    const r = await sendViaResend({ to, subject, html, text });
     if (r.ok) return r;
-    // якщо функція не задеплоєна або впала — пробуємо Resend
-    if (process.env.RESEND_API_KEY?.trim()) {
-      return sendViaResend({ to, subject, html, text });
+    if (supabaseEdgeSendConfigured()) {
+      const s = await sendViaSupabaseEdge({ to, subject, html, text });
+      if (s.ok) return s;
     }
     return r;
   }
-  if (process.env.RESEND_API_KEY?.trim()) {
-    return sendViaResend({ to, subject, html, text });
+
+  if (supabaseEdgeSendConfigured()) {
+    return sendViaSupabaseEdge({ to, subject, html, text });
   }
 
   console.log("\n──────── EMAIL (console fallback) ────────");

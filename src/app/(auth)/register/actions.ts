@@ -73,7 +73,7 @@ export async function register(_prev: { error: string }, formData: FormData) {
     await prisma.user.delete({ where: { id: user.id } });
     return {
       error:
-        "Не вдалось надіслати лист підтвердження. Перевірте: деплой Edge Function у Supabase, секрети RESEND_API_KEY/EMAIL_FROM у функції, у Vercel — SUPABASE_URL та SUPABASE_SERVICE_ROLE_KEY, або налаштуйте Resend / EMAIL_WEBHOOK_URL.",
+        "Не вдалось надіслати лист. Додайте у Vercel RESEND_API_KEY + EMAIL_FROM, або задеплойте Edge Function send-auth-email у Supabase з секретами RESEND_API_KEY/EMAIL_FROM і задайте SUPABASE_SERVICE_ROLE_KEY. Деталі — у логах сервера (Vercel → Logs).",
     };
   }
 
