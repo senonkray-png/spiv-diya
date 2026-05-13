@@ -110,6 +110,7 @@ function PlanCardShell({
   features: string[];
   highlight?: boolean;
   activeRing?: boolean;
+  children: ReactNode;
 }) {
   return (
     <Card
