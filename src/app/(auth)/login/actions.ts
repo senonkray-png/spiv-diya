@@ -31,6 +31,13 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: "Невірний email або пароль." };
   }
 
+  if (!user.emailVerified) {
+    return {
+      error:
+        "Спочатку підтвердіть пошту: відкрийте посилання з листа або на сторінці реєстрації натисніть «Надіслати лист знову».",
+    };
+  }
+
   await createSession({
     userId: user.id,
     email: user.email,

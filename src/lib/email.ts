@@ -77,7 +77,7 @@ export async function createEmailToken(args: {
 export async function sendVerificationEmail(userId: string, email: string, companyName: string) {
   const token = await createEmailToken({ userId, email, type: "verify", ttlMinutes: 60 * 24 });
   const link = appUrl(`/auth/verify?token=${encodeURIComponent(token)}`);
-  await sendEmail({
+  const sent = await sendEmail({
     to: email,
     subject: "Підтвердіть пошту на СпівДія",
     text: `Привіт, ${companyName}!\n\nПідтвердіть пошту, перейшовши за посиланням:\n${link}\n\nПосилання дійсне 24 години.`,
@@ -93,7 +93,7 @@ export async function sendVerificationEmail(userId: string, email: string, compa
       </div>
     `,
   });
-  return { token, link };
+  return { token, link, ok: sent.ok };
 }
 
 export async function sendMagicLinkEmail(userId: string, email: string) {
