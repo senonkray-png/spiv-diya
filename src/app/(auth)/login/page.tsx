@@ -23,6 +23,7 @@ function LoginForm() {
   const [state, formAction, pending] = useActionState(login, initialState);
   const searchParams = useSearchParams();
   const errKey = searchParams.get("error");
+  const nextParam = searchParams.get("next") ?? "";
   const urlMessage = errKey ? (URL_ERRORS[errKey] ?? "Сталася помилка входу. Спробуйте ще раз.") : null;
 
   return (
@@ -42,6 +43,7 @@ function LoginForm() {
             </p>
           )}
           <form action={formAction} className="space-y-4">
+            <input type="hidden" name="next" value={nextParam} />
             <Input label="Email" name="email" type="email" required placeholder="you@company.ua" />
             <Input label="Пароль" name="password" type="password" required placeholder="Ваш пароль" />
 

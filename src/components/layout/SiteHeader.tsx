@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LayoutDashboard, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { HeaderMarketplaceSearch } from "@/components/layout/HeaderMarketplaceSearch";
+import { MarketplaceHeaderIconRail } from "@/components/layout/MarketplaceHeaderQuickNav";
 
 export interface SiteHeaderNavItem {
   href: string;
@@ -15,10 +18,41 @@ export interface SiteHeaderProps {
   tabs?: SiteHeaderNavItem[];
   /** Чи залогінений користувач (з server layout/page) */
   isAuthenticated?: boolean;
+  /** Рядок пошуку в шапці (за замовчуванням — увімкнено, коли є таби маркетплейсу) */
+  showMarketplaceSearch?: boolean;
 }
 
-export function SiteHeader({ tabs = [], isAuthenticated = false }: SiteHeaderProps) {
+export function SiteHeader({
+  tabs = [],
+  isAuthenticated = false,
+  showMarketplaceSearch: showSearchProp,
+}: SiteHeaderProps) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const [overlayTopPx, setOverlayTopPx] = useState(120);
+
+  const showSearch = showSearchProp ?? tabs.length > 0;
+
+  const measureHeader = useCallback(() => {
+    const el = headerRef.current;
+    if (el) setOverlayTopPx(Math.ceil(el.getBoundingClientRect().height));
+  }, []);
+
+  useLayoutEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useLayoutEffect(() => {
+    measureHeader();
+  }, [measureHeader, open, showSearch, tabs.length]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    measureHeader();
+    window.addEventListener("resize", measureHeader);
+    return () => window.removeEventListener("resize", measureHeader);
+  }, [mounted, measureHeader]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -27,164 +61,221 @@ export function SiteHeader({ tabs = [], isAuthenticated = false }: SiteHeaderPro
     };
   }, [open]);
 
-  const cabinetHref = isAuthenticated ? "/dashboard" : "/login";
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
 
-  /** Хедер sticky + нижній ряд табів (marketplace mobile) — нижній край для overlay */
-  const overlayTopPx = tabs.length ? 118 : 60;
+  const cabinetHref = isAuthenticated ? "/dashboard" : "/login";
 
   const linkClass =
     "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground whitespace-nowrap";
   const linkClassActiveAccent =
     "text-sm font-semibold text-foreground underline-offset-4 hover:underline whitespace-nowrap";
 
-  return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 dark:border-border/40 dark:bg-background/65 dark:supports-[backdrop-filter]:bg-background/50 shadow-[inset_0_-1px_0_0_rgba(148,163,184,0.08)] dark:shadow-[inset_0_-1px_0_0_rgba(148,163,184,0.06)]">
-      <div className="mx-auto flex h-[3.75rem] max-w-7xl items-center justify-between gap-3 px-4 md:px-6">
-        <Link
-          href="/marketplace"
-          className="font-semibold tracking-tight text-foreground shrink-0 text-lg"
+  const hasSubRow = showSearch || tabs.length > 0;
+
+  const mobileMenu =
+    mounted &&
+    open &&
+    typeof document !== "undefined" &&
+    createPortal(
+      <div
+        id="mobile-menu"
+        className="fixed inset-x-0 bottom-0 z-[45] md:hidden"
+        style={{ top: overlayTopPx }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Меню"
+      >
+        <button
+          type="button"
+          className="absolute inset-0 bg-foreground/35 backdrop-blur-[2px]"
+          aria-label="Закрити меню"
           onClick={() => setOpen(false)}
-        >
-          СпівДія
-        </Link>
-
-        {/* Desktop: таби маркетплейсу */}
-        {tabs.length > 0 && (
-          <nav aria-label="Маркетплейс" className="hidden sm:flex flex-1 items-center justify-center gap-0.5 min-w-0">
-            {tabs.map((t) => (
-              <Link
-                key={t.href}
-                href={t.href}
-                className="rounded-lg px-3 py-1.5 transition-colors hover:bg-muted text-sm font-medium text-muted-foreground hover:text-foreground"
-              >
-                {t.label}
-              </Link>
-            ))}
-          </nav>
-        )}
-
-        {/* Desktop: дії */}
-        <div className="hidden md:flex items-center gap-3 shrink-0">
-          {!tabs.length && (
-            <Link href="/marketplace" className={linkClass}>
-              Маркетплейс
-            </Link>
+        />
+        <aside className="absolute right-0 top-0 bottom-0 flex w-[min(20rem,calc(100vw-1rem))] flex-col gap-4 overflow-y-auto border-l border-border bg-background p-5 shadow-2xl">
+          {tabs.length > 0 && (
+            <nav className="flex flex-col gap-0.5 border-b border-border/60 pb-4" aria-label="Розділи маркетплейсу">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Маркетплейс</p>
+              {tabs.map((t) => (
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  className={`${linkClass} rounded-lg px-3 py-2.5 hover:bg-muted`}
+                  onClick={() => setOpen(false)}
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </nav>
           )}
-          <ThemeToggle />
-          <Link
-            href={cabinetHref}
-            className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/80 px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition-[transform,box-shadow,background-color] hover:bg-muted/80 hover:shadow-md active:scale-[0.98]"
-          >
-            <LayoutDashboard className="size-[1.125rem] shrink-0 text-primary" aria-hidden />
-            Особистий кабінет
-          </Link>
-          {!isAuthenticated && (
+          <nav className="flex flex-col gap-1" aria-label="Мобільна навігація">
+            {!tabs.length && (
+              <>
+                <Link
+                  href="/marketplace"
+                  className={`${linkClass} rounded-xl px-3 py-3 hover:bg-muted`}
+                  onClick={() => setOpen(false)}
+                >
+                  Маркетплейс
+                </Link>
+                <Link
+                  href="/marketplace/products"
+                  className={`${linkClass} rounded-xl px-3 py-3 hover:bg-muted`}
+                  onClick={() => setOpen(false)}
+                >
+                  Каталог товарів
+                </Link>
+              </>
+            )}
             <Link
-              href="/register"
-              className={linkClassActiveAccent + " rounded-xl px-4 py-2 bg-primary text-primary-foreground hover:no-underline hover:opacity-90 shadow-sm hover:shadow-md"}
-            >
-              Зареєструватись
-            </Link>
-          )}
-        </div>
-
-        {/* Burger */}
-        <div className="flex md:hidden items-center gap-2">
-          <ThemeToggle />
-          {!isAuthenticated && (
-            <Link
-              href="/register"
-              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+              href={cabinetHref}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-muted/70"
               onClick={() => setOpen(false)}
             >
-              Реєстрація
+              <LayoutDashboard className="size-5 shrink-0 text-primary" aria-hidden />
+              Особистий кабінет
             </Link>
-          )}
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls="mobile-menu"
-            aria-label={open ? "Закрити меню" : "Відкрити меню"}
-            className="inline-flex rounded-lg border border-border p-2 text-foreground hover:bg-muted/80 transition-colors"
-            onClick={() => setOpen((v) => !v)}
-          >
-            {open ? <X className="size-5" /> : <Menu className="size-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Мобільна друга смуга табів маркетплейсу (як було) */}
-      {tabs.length > 0 && (
-        <div className="md:hidden border-t border-border/40 bg-background/50 backdrop-blur-sm">
-          <nav className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-2 py-2" aria-label="Маркетплейс">
-            {tabs.map((t) => (
-              <Link
-                key={t.href}
-                href={t.href}
-                className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-              >
-                {t.label}
-              </Link>
-            ))}
+            {!isAuthenticated && (
+              <>
+                <Link
+                  href="/login"
+                  className={`${linkClass} rounded-xl px-3 py-3 hover:bg-muted`}
+                  onClick={() => setOpen(false)}
+                >
+                  Увійти
+                </Link>
+                <Link
+                  href="/register"
+                  className={`${linkClassActiveAccent} mt-1 rounded-xl bg-primary px-4 py-3 text-center text-primary-foreground hover:no-underline`}
+                  onClick={() => setOpen(false)}
+                >
+                  Зареєструватись
+                </Link>
+              </>
+            )}
           </nav>
-        </div>
-      )}
+        </aside>
+      </div>,
+      document.body,
+    );
 
-      {/* Overlay + панель мобільного меню */}
-      {open && (
-        <div
-          className="md:hidden fixed inset-x-0 bottom-0 z-40 flex flex-col"
-          id="mobile-menu"
-          style={{ top: overlayTopPx }}
-        >
-          <button
-            type="button"
-            className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
-            aria-label="Закрити overlay"
+  return (
+    <>
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-50 border-b border-border/50 bg-background/75 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 dark:border-border/40 dark:bg-background/65 dark:supports-[backdrop-filter]:bg-background/50 shadow-[inset_0_-1px_0_0_rgba(148,163,184,0.08)] dark:shadow-[inset_0_-1px_0_0_rgba(148,163,184,0.06)]"
+    >
+      <div className="mx-auto max-w-7xl px-4 md:px-6">
+        {/* Ряд 1: лого | пошук (md+) | дії */}
+        <div className="flex h-[3.75rem] items-center gap-2 md:gap-3">
+          <Link
+            href="/marketplace"
+            className="shrink-0 text-lg font-semibold tracking-tight text-foreground"
             onClick={() => setOpen(false)}
-          />
-          <div className="relative ml-auto flex h-full w-[min(20rem,calc(100%-2rem))] flex-col gap-6 border-l border-border bg-background/95 backdrop-blur-xl p-6 shadow-xl">
-            <nav className="flex flex-col gap-1" aria-label="Мобільна навігація">
-              {!tabs.length && (
-                <>
-                  <Link href="/marketplace" className={`${linkClass} py-3 px-3 rounded-xl hover:bg-muted`} onClick={() => setOpen(false)}>
-                    Маркетплейс
-                  </Link>
-                  <Link href="/marketplace/products" className={`${linkClass} py-3 px-3 rounded-xl hover:bg-muted`} onClick={() => setOpen(false)}>
-                    Каталог товарів
-                  </Link>
-                </>
-              )}
+          >
+            СпівДія
+          </Link>
+
+          {showSearch && (
+            <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-1 md:flex">
+              <HeaderMarketplaceSearch />
+              <MarketplaceHeaderIconRail
+                isAuthenticated={isAuthenticated}
+                className="hidden shrink-0 lg:flex"
+              />
+            </div>
+          )}
+
+          {/* Desktop: дії */}
+          <div className="ml-auto hidden shrink-0 items-center gap-3 md:flex">
+            {!tabs.length && (
+              <Link href="/marketplace" className={linkClass}>
+                Маркетплейс
+              </Link>
+            )}
+            <ThemeToggle />
+            {tabs.length === 0 && (
               <Link
                 href={cabinetHref}
-                className="mt-2 inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground shadow-sm hover:bg-muted/70"
-                onClick={() => setOpen(false)}
+                className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/80 px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition-[transform,box-shadow,background-color] hover:bg-muted/80 hover:shadow-md active:scale-[0.98]"
               >
-                <LayoutDashboard className="size-5 text-primary shrink-0" aria-hidden />
+                <LayoutDashboard className="size-[1.125rem] shrink-0 text-primary" aria-hidden />
                 Особистий кабінет
               </Link>
-              {!isAuthenticated && (
-                <>
-                  <Link
-                    href="/login"
-                    className={`${linkClass} py-3 px-3 rounded-xl hover:bg-muted`}
-                    onClick={() => setOpen(false)}
-                  >
-                    Увійти
-                  </Link>
-                  <Link
-                    href="/register"
-                    className={`${linkClassActiveAccent} rounded-xl px-4 py-3 mt-2 text-center bg-primary text-primary-foreground hover:no-underline`}
-                    onClick={() => setOpen(false)}
-                  >
-                    Зареєструватись
-                  </Link>
-                </>
-              )}
-            </nav>
+            )}
+            {!isAuthenticated && (
+              <Link
+                href="/register"
+                className={
+                  linkClassActiveAccent +
+                  " rounded-xl bg-primary px-4 py-2 text-primary-foreground shadow-sm hover:no-underline hover:opacity-90 hover:shadow-md"
+                }
+              >
+                Зареєструватись
+              </Link>
+            )}
+          </div>
+
+          {/* Mobile: тема + реєстрація + бургер */}
+          <div className="ml-auto flex items-center gap-2 md:hidden">
+            <ThemeToggle />
+            {!isAuthenticated && (
+              <Link
+                href="/register"
+                className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
+                onClick={() => setOpen(false)}
+              >
+                Реєстрація
+              </Link>
+            )}
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-controls="mobile-menu"
+              aria-label={open ? "Закрити меню" : "Відкрити меню"}
+              className="inline-flex rounded-lg border border-border p-2 text-foreground transition-colors hover:bg-muted/80"
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? <X className="size-5" /> : <Menu className="size-5" />}
+            </button>
           </div>
         </div>
-      )}
+
+        {/* Ряд 2: мобільний пошук + таби маркетплейсу */}
+        {hasSubRow && (
+          <div className="border-t border-border/40 bg-background/50 backdrop-blur-sm">
+            {showSearch && (
+              <div className="border-b border-border/30 px-0 py-2 md:hidden">
+                <HeaderMarketplaceSearch />
+              </div>
+            )}
+            {tabs.length > 0 && (
+              <nav
+                className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-1 py-2 md:px-2"
+                aria-label="Маркетплейс"
+              >
+                {tabs.map((t) => (
+                  <Link
+                    key={t.href}
+                    href={t.href}
+                    className="whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:text-sm"
+                  >
+                    {t.label}
+                  </Link>
+                ))}
+              </nav>
+            )}
+          </div>
+        )}
+      </div>
     </header>
+    {mobileMenu}
+    </>
   );
 }

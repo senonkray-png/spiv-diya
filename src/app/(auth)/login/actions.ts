@@ -46,5 +46,10 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     role: user.role,
   });
 
-  redirect("/marketplace");
+  const nextRaw = String(formData.get("next") ?? "").trim();
+  const next =
+    nextRaw.startsWith("/") && !nextRaw.startsWith("//") && !nextRaw.includes("://")
+      ? nextRaw
+      : "/marketplace";
+  redirect(next);
 }

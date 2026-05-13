@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/session";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { MarketplaceShell } from "@/components/layout/MarketplaceShell";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,13 @@ export default async function MarketplaceLayout({ children }: { children: React.
 
   return (
     <div className="min-h-screen bg-background">
-      <SiteHeader tabs={tabs} isAuthenticated={!!session} />
-      <main>{children}</main>
-      <SiteFooter />
+      <MarketplaceShell isAuthenticated={!!session}>
+        <SiteHeader tabs={tabs} isAuthenticated={!!session} />
+        <div className="pb-[4.75rem] lg:pb-0">
+          <main>{children}</main>
+          <SiteFooter />
+        </div>
+      </MarketplaceShell>
     </div>
   );
 }
