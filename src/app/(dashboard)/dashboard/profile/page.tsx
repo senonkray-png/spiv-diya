@@ -40,11 +40,10 @@ export default async function ProfilePage() {
     facebook: user.facebook ?? "",
     whatsapp: user.whatsapp ?? "",
     acceptsPartners: user.acceptsPartners,
-    role: (["member", "provider", "buyer"].includes(user.role) ? user.role : "member") as
-      | "member"
-      | "provider"
-      | "buyer",
     accountRole: user.role,
+    subscriptionPlan: user.subscriptionPlan,
+    subscriptionStatus: user.subscriptionStatus,
+    subscriptionExpiresAt: user.subscriptionExpiresAt,
     interests: user.interests ?? [],
   };
 

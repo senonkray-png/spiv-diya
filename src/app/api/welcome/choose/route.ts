@@ -12,6 +12,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/welcome", req.url));
   }
 
+  const me = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: { role: true },
+  });
+  if (me?.role !== "member") {
+    return NextResponse.redirect(new URL("/dashboard/profile", req.url));
+  }
+
   const user = await prisma.user.update({
     where: { id: session.userId },
     data: { role: "buyer" },

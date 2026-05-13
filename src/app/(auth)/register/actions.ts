@@ -31,7 +31,7 @@ export async function register(_prev: { error: string }, formData: FormData) {
   const passwordHash = await bcrypt.hash(password, 12);
 
   const userCount = await prisma.user.count();
-  const role = userCount === 0 ? "admin" : "member";
+  const role = userCount === 0 ? "admin" : "buyer";
 
   const user = await prisma.user.create({
     data: {
