@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
+import { isEmailVerificationSkipped } from "@/lib/email";
 
 export type LoginState = { error?: string };
 
@@ -31,7 +32,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     return { error: "Невірний email або пароль." };
   }
 
-  if (!user.emailVerified) {
+  if (!user.emailVerified && !isEmailVerificationSkipped()) {
     return {
       error:
         "Спочатку підтвердіть пошту: відкрийте посилання з листа або на сторінці реєстрації натисніть «Надіслати лист знову».",

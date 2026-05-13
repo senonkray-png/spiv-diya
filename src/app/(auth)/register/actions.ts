@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { createSession } from "@/lib/session";
-import { isOutboundEmailConfigured, sendVerificationEmail } from "@/lib/email";
+import { isEmailVerificationSkipped, isOutboundEmailConfigured, sendVerificationEmail } from "@/lib/email";
 
 export async function register(_prev: { error: string }, formData: FormData) {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -29,15 +29,17 @@ export async function register(_prev: { error: string }, formData: FormData) {
     return { error: "Акаунт з таким email вже існує." };
   }
 
-  if (process.env.NODE_ENV === "production" && !isOutboundEmailConfigured()) {
+  if (!isEmailVerificationSkipped() && process.env.NODE_ENV === "production" && !isOutboundEmailConfigured()) {
     return {
       error:
         "Реєстрація недоступна: не налаштовано відправку пошти. У Vercel задайте EMAIL_WEBHOOK_URL або пару SUPABASE_URL (або NEXT_PUBLIC_SUPABASE_URL) + SUPABASE_SERVICE_ROLE_KEY і задеплойте Edge Function send-auth-email з SMTP-секретами в Supabase.",
     };
   }
 
-  /** Локально без пошти — одразу «підтверджуємо» для зручності розробки. */
-  const skipEmailVerify = process.env.NODE_ENV !== "production" && !isOutboundEmailConfigured();
+  /** Без листа: dev без пошти, або глобально вимкнено (SKIP_EMAIL_VERIFICATION за замовчуванням). */
+  const skipEmailVerify =
+    isEmailVerificationSkipped() ||
+    (process.env.NODE_ENV !== "production" && !isOutboundEmailConfigured());
 
   const passwordHash = await bcrypt.hash(password, 12);
 

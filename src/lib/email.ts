@@ -16,6 +16,16 @@ export function isOutboundEmailConfigured(): boolean {
   return false;
 }
 
+/**
+ * Лист підтвердження за замовчуванням вимкнено.
+ * Щоб увімкнути знов: у Vercel / .env.local задайте SKIP_EMAIL_VERIFICATION=0 (або false) і налаштуйте пошту (webhook / Supabase Edge).
+ */
+export function isEmailVerificationSkipped(): boolean {
+  const v = process.env.SKIP_EMAIL_VERIFICATION?.trim().toLowerCase();
+  if (v === "0" || v === "false" || v === "no") return false;
+  return true;
+}
+
 function supabaseEdgeSendConfigured(): boolean {
   const base = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim();
   return Boolean(base && process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
