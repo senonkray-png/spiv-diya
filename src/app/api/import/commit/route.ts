@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
+import { classifyMarketplaceProduct } from "@/lib/product-catalog-classify";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -30,6 +31,12 @@ export async function POST(req: NextRequest) {
       ? raw.photos.filter((p: unknown) => typeof p === "string").slice(0, 8)
       : [];
 
+    const labels = await classifyMarketplaceProduct({
+      title,
+      description,
+      sellerCategory: null,
+    });
+
     const product = await prisma.product.create({
       data: {
         ownerId: session.userId,
@@ -42,6 +49,9 @@ export async function POST(req: NextRequest) {
         externalId: raw?.externalId ? String(raw.externalId).slice(0, 200) : null,
         city: me.city,
         region: me.region,
+        catalogCategory: labels.catalogCategory,
+        catalogSubcategory: labels.catalogSubcategory,
+        isPromotional: labels.isPromotional,
       },
     });
     created.push(product.id);

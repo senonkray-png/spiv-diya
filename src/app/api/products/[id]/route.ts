@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
+import { classifyMarketplaceProduct } from "@/lib/product-catalog-classify";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -49,6 +50,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const body = await req.json().catch(() => ({}));
   const data = body?.product ?? body;
 
+  const textChanged =
+    typeof data?.title === "string" ||
+    typeof data?.description === "string" ||
+    typeof data?.category === "string";
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const update: any = {};
   if (typeof data?.title === "string") update.title = data.title.trim().slice(0, 200);
@@ -62,6 +68,21 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (Array.isArray(data?.photos)) update.photos = data.photos.filter((p: unknown) => typeof p === "string").slice(0, 10);
   if (typeof data?.status === "string" && ["active", "paused", "removed"].includes(data.status)) {
     update.status = data.status;
+  }
+
+  if (textChanged) {
+    const mergedTitle = (typeof update.title === "string" ? update.title : product.title).trim();
+    const mergedDesc = (typeof update.description === "string" ? update.description : product.description).trim();
+    const mergedSellerCat =
+      typeof update.category !== "undefined" ? update.category : product.category;
+    const labels = await classifyMarketplaceProduct({
+      title: mergedTitle,
+      description: mergedDesc,
+      sellerCategory: mergedSellerCat,
+    });
+    update.catalogCategory = labels.catalogCategory;
+    update.catalogSubcategory = labels.catalogSubcategory;
+    update.isPromotional = labels.isPromotional;
   }
 
   const oldTokens = product.priceTokens;

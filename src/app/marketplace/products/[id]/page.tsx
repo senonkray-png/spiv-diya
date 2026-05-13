@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ProductCard } from "@/components/market/ProductCard";
 import { ProductActions } from "@/components/market/ProductActions";
 import { getSession } from "@/lib/session";
+import { appendUserBrowseCategory } from "@/lib/marketplace-personalization";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -47,6 +48,10 @@ export default async function ProductDetailsPage({ params }: PageProps) {
 
   // Increment views (best-effort)
   await prisma.product.update({ where: { id }, data: { views: { increment: 1 } } }).catch(() => {});
+
+  if (session) {
+    await appendUserBrowseCategory(session.userId, product.catalogCategory ?? null).catch(() => {});
+  }
 
   let isFav = false;
   if (session) {

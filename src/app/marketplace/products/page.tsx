@@ -3,19 +3,21 @@ import { prisma } from "@/lib/db";
 import { ProductCard } from "@/components/market/ProductCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
+import { MARKETPLACE_CATALOG } from "@/lib/marketplace-taxonomy";
 
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams: Promise<{ q?: string; category?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; catalogCategory?: string }>;
 }
 
 export default async function ProductsPage({ searchParams }: PageProps) {
-  const { q, category } = await searchParams;
+  const { q, category, catalogCategory } = await searchParams;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { status: "active" };
   if (category) where.category = category;
+  if (catalogCategory) where.catalogCategory = catalogCategory;
   if (q) {
     where.OR = [
       { title: { contains: q, mode: "insensitive" } },
@@ -58,6 +60,18 @@ export default async function ProductsPage({ searchParams }: PageProps) {
           placeholder="Пошук товарів..."
           className="flex-1 min-w-[200px] rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-4 py-2.5 text-sm"
         />
+        <select
+          name="catalogCategory"
+          defaultValue={catalogCategory ?? ""}
+          className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2.5 text-sm max-w-[200px]"
+        >
+          <option value="">Каталог маркетплейсу</option>
+          {MARKETPLACE_CATALOG.filter((c) => c.slug !== "other").map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.labelUa}
+            </option>
+          ))}
+        </select>
         <select
           name="category"
           defaultValue={category ?? ""}

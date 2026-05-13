@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
+import { classifyMarketplaceProduct } from "@/lib/product-catalog-classify";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const sellerId = url.searchParams.get("sellerId");
   const q = url.searchParams.get("q");
   const category = url.searchParams.get("category");
+  const catalogCategory = url.searchParams.get("catalogCategory");
   const includeMine = url.searchParams.get("includeMine") === "1";
 
   const session = includeMine ? await getSession() : null;
@@ -35,6 +37,7 @@ export async function GET(req: NextRequest) {
     ];
   }
   if (category) where.category = category;
+  if (catalogCategory) where.catalogCategory = catalogCategory;
 
   const products = await prisma.product.findMany({
     where,
@@ -77,6 +80,13 @@ export async function POST(req: NextRequest) {
   const priceTokens = Math.max(0, Math.round(Number(data?.priceTokens ?? 0)));
   const priceUAH = data?.priceUAH != null ? Math.max(0, Math.round(Number(data.priceUAH))) : null;
   const photos = Array.isArray(data?.photos) ? data.photos.filter((p: unknown) => typeof p === "string").slice(0, 10) : [];
+  const sellerCat = data?.category ? String(data.category).slice(0, 80) : null;
+
+  const labels = await classifyMarketplaceProduct({
+    title,
+    description,
+    sellerCategory: sellerCat,
+  });
 
   const product = await prisma.product.create({
     data: {
@@ -86,7 +96,10 @@ export async function POST(req: NextRequest) {
       priceTokens,
       priceUAH,
       currency: typeof data?.currency === "string" ? data.currency : "UAH",
-      category: data?.category ? String(data.category).slice(0, 80) : null,
+      category: sellerCat,
+      catalogCategory: labels.catalogCategory,
+      catalogSubcategory: labels.catalogSubcategory,
+      isPromotional: labels.isPromotional,
       city: data?.city ? String(data.city).slice(0, 80) : me.city,
       region: data?.region ? String(data.region).slice(0, 80) : me.region,
       photos,

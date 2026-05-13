@@ -183,6 +183,8 @@ model User {
   whatsapp      String?
   businessNiche String?
   acceptsPartners Boolean @default(true)
+  /// Останні переглянуті slug категорій маркетплейсу (для персоналізації головної)
+  marketplaceBrowseCategories String[] @default([])
 
   assets         Resource[]      @relation("UserAssets")
   deficits       Resource[]      @relation("UserDeficits")
@@ -334,6 +336,10 @@ model Product {
   priceUAH    Int?          // optional UAH equivalent
   currency    String        @default("UAH") // "UAH" | "USD" | "tokens"
   category    String?       // free-form market category
+  /// Єдиний каталог маркетплейсу (ІІ / евристика), не залежить від поля category продавця
+  catalogCategory    String?
+  catalogSubcategory String?
+  isPromotional      Boolean @default(false)
   city        String?
   region      String?
   photos      String[]      @default([])
@@ -349,6 +355,7 @@ model Product {
 
   @@index([ownerId])
   @@index([status])
+  @@index([status, catalogCategory])
 }
 
 model ServiceAd {
