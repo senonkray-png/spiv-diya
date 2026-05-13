@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { canManageSellerCatalog } from "@/lib/auth";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -41,6 +42,9 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const isOwner = product.ownerId === session.userId;
   const isAdmin = me?.role === "admin";
   if (!isOwner && !isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdmin && (!me || !canManageSellerCatalog(me.role))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const body = await req.json().catch(() => ({}));
   const data = body?.product ?? body;
@@ -143,6 +147,9 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   const isOwner = product.ownerId === session.userId;
   const isAdmin = me?.role === "admin";
   if (!isOwner && !isAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!isAdmin && (!me || !canManageSellerCatalog(me.role))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   await prisma.product.delete({ where: { id } });
   return NextResponse.json({ ok: true });

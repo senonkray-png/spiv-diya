@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { canManageSellerCatalog } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -12,6 +13,12 @@ export async function POST(req: NextRequest) {
 
   const me = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!me) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!canManageSellerCatalog(me.role)) {
+    return NextResponse.json(
+      { error: "Імпорт доступний для ролей «Продавець» і «Підприємець»." },
+      { status: 403 },
+    );
+  }
 
   const created = [];
   for (const raw of items.slice(0, 50)) {

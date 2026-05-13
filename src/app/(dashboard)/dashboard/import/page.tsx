@@ -1,16 +1,17 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { canManageSellerCatalog, getCurrentUser } from "@/lib/auth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { ImportClient } from "@/components/import/ImportClient";
 
 export default async function ImportPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (!canManageSellerCatalog(user.role)) redirect("/welcome");
 
   const me = await prisma.user.findUnique({
-    where: { id: session.userId },
+    where: { id: user.id },
     select: { websiteUrl: true },
   });
 

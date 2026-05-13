@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { canManageSellerCatalog } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -57,8 +58,7 @@ export async function POST(req: NextRequest) {
   if (!me) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (!me.isActive) return NextResponse.json({ error: "Account is not active" }, { status: 403 });
 
-  const allowedRoles = ["provider", "entrepreneur", "admin"];
-  if (!allowedRoles.includes(me.role)) {
+  if (!canManageSellerCatalog(me.role)) {
     return NextResponse.json(
       { error: "Розміщення товарів доступне для планів «Продавець» і «Підприємець». Активуйте підписку." },
       { status: 403 },

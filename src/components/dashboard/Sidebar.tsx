@@ -21,7 +21,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/dashboard", label: "Огляд", icon: HomeIcon },
   { href: "/dashboard/products", label: "Товари", icon: BoxIcon, roles: ["provider", "entrepreneur", "admin"] },
-  { href: "/dashboard/services", label: "Послуги", icon: BriefcaseIcon, roles: ["provider", "entrepreneur", "admin", "buyer"] },
+  { href: "/dashboard/services", label: "Послуги", icon: BriefcaseIcon, roles: ["provider", "entrepreneur", "admin"] },
   { href: "/dashboard/posts", label: "Пости", icon: PostIcon, roles: ["entrepreneur", "admin"] },
   { href: "/dashboard/import", label: "Імпорт сайту", icon: ImportIcon, roles: ["entrepreneur", "admin"] },
   { href: "/dashboard/messages", label: "Чати", icon: ChatIcon },

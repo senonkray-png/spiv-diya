@@ -1,6 +1,11 @@
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 
+/** Каталог товарів, імпорт, оголошення послуг — лише продавець / підприємець / адмін. */
+export function canManageSellerCatalog(role: string): boolean {
+  return role === "provider" || role === "entrepreneur" || role === "admin";
+}
+
 /**
  * Returns the currently signed-in user record (fresh from DB) or `null` if
  * the session is missing or invalid. Use in server components / route handlers

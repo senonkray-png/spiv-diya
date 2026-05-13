@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { prisma } from "@/lib/db";
+import { canManageSellerCatalog } from "@/lib/auth";
 import { fetchAndParseProducts } from "@/lib/import/site-importer";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { role: true } });
+  if (!me || !canManageSellerCatalog(me.role)) {
+    return NextResponse.json(
+      { error: "Імпорт доступний для ролей «Продавець» і «Підприємець»." },
+      { status: 403 },
+    );
+  }
 
   const body = await req.json().catch(() => ({}));
   const url = String(body?.url ?? "").trim();
