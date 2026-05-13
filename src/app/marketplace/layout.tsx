@@ -2,6 +2,8 @@ import { getSession } from "@/lib/session";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
+export const dynamic = "force-dynamic";
+
 const tabs = [
   { href: "/marketplace", label: "Огляд" },
   { href: "/marketplace/products", label: "Товари" },
