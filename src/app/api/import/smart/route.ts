@@ -2,9 +2,9 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
-import { spawn } from "child_process";
-import path from "path";
-import fs from "fs";
+import { spawn } from "node:child_process";
+import path from "node:path";
+import fs from "node:fs";
 
 export const runtime = "nodejs";
 
