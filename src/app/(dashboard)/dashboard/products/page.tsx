@@ -14,7 +14,7 @@ export default async function MyProductsPage() {
         title="Мої товари"
         description="Розміщуйте товари — їх побачать у каталозі та зможуть купити за СпівМонети або написати вам."
       />
-      <ProductsBoard ownerId={user.id} />
+      <ProductsBoard ownerId={user.id} role={user.role} />
     </div>
   );
 }
