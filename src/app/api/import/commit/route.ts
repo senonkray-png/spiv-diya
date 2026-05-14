@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
-import { classifyMarketplaceProduct } from "@/lib/product-catalog-classify";
+import { classifyMarketplaceProductHeuristic } from "@/lib/product-catalog-classify";
+import { syncPriceTokensFromUah } from "@/lib/pricing";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -22,7 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   const created = [];
-  for (const raw of items.slice(0, 50)) {
+  for (const raw of items.slice(0, 120)) {
     const title = String(raw?.title ?? "").trim();
     const description = String(raw?.description ?? "").trim();
     if (!title || !description) continue;
@@ -31,19 +35,35 @@ export async function POST(req: NextRequest) {
       ? raw.photos.filter((p: unknown) => typeof p === "string").slice(0, 8)
       : [];
 
-    const labels = await classifyMarketplaceProduct({
+    const labels = classifyMarketplaceProductHeuristic({
       title,
       description,
       sellerCategory: null,
     });
+
+    const priceUAH = raw?.priceUAH != null ? Math.max(0, Math.round(Number(raw.priceUAH))) : null;
+    const discountPercent = 0;
+    const priceTokens =
+      priceUAH != null
+        ? syncPriceTokensFromUah(priceUAH, discountPercent)
+        : raw?.priceTokens
+          ? Math.max(0, Math.round(Number(raw.priceTokens)))
+          : 0;
+
+    const dimensionsText =
+      typeof raw?.dimensionsText === "string" && raw.dimensionsText.trim()
+        ? raw.dimensionsText.trim().slice(0, 500)
+        : null;
 
     const product = await prisma.product.create({
       data: {
         ownerId: session.userId,
         title: title.slice(0, 200),
         description: description.slice(0, 5000),
-        priceUAH: raw?.priceUAH != null ? Math.max(0, Math.round(Number(raw.priceUAH))) : null,
-        priceTokens: raw?.priceTokens ? Math.max(0, Math.round(Number(raw.priceTokens))) : 0,
+        priceUAH,
+        priceTokens,
+        discountPercent,
+        dimensionsText,
         photos,
         sourceUrl: raw?.sourceUrl ? String(raw.sourceUrl).slice(0, 500) : null,
         externalId: raw?.externalId ? String(raw.externalId).slice(0, 200) : null,

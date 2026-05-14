@@ -15,6 +15,8 @@ export interface ImportedProduct {
   photos: string[];
   sourceUrl: string;
   externalId?: string;
+  /** Фасовка, розміри, дод. характеристики з мікророзмітки */
+  dimensionsText?: string | null;
 }
 
 const UAH_RX = /([\d\u00A0\s]+(?:[.,]\d+)?)\s*(?:грн|₴|UAH|uah)/i;
@@ -22,7 +24,20 @@ const USD_RX = /\$\s*([\d\u00A0\s]+(?:[.,]\d+)?)/i;
 
 /** Paths that often denote a product detail page (same site only). */
 const PRODUCT_PATH_HINTS =
-  /\/(product|products|p|item|goods|tovar|товар|shop|store|katalog|catalog)\/|\/p\d+\/?(?:$|[?#])|[?&](product_?id|goods_?id|item_?id)=/i;
+  /\/(product|products|p|item|goods|tovar|товар|shop|store|katalog|catalog|collection)\/|\/p\d+\/?(?:$|[?#])|[?&](product_?id|goods_?id|item_?id)=/i;
+
+function isLikelyProductUrl(href: string): boolean {
+  try {
+    const u = new URL(href);
+    const path = u.pathname + u.search;
+    if (!/^https?:$/i.test(u.protocol)) return false;
+    if (/\.(pdf|jpe?g|png|gif|webp|zip|mp4|css|js|svg)$/i.test(path)) return false;
+    if (/sitemap|\/wp-json\/|\/feed\/?/i.test(path)) return false;
+    return PRODUCT_PATH_HINTS.test(path);
+  } catch {
+    return false;
+  }
+}
 
 function parsePrice(raw: string): number | null {
   const uah = raw.match(UAH_RX);
@@ -179,6 +194,37 @@ function priceUahFromOffer(priceRaw: string, currencyRaw: string): number | null
   return Math.round(n);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildDimensionsFromJsonLd(b: any): string | null {
+  const lines: string[] = [];
+  const ap = b.additionalProperty;
+  if (Array.isArray(ap)) {
+    for (const x of ap) {
+      if (x && typeof x === "object" && x.name != null && x.value != null) {
+        lines.push(`${String(x.name).trim()}: ${String(x.value).trim()}`);
+      }
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const qline = (label: string, v: any) => {
+    if (!v || typeof v !== "object") return;
+    if (v.value != null) {
+      const u = v.unitCode != null ? String(v.unitCode) : v.unitText != null ? String(v.unitText) : "";
+      lines.push(`${label}: ${v.value} ${u}`.trim());
+    }
+  };
+  qline("Вага", b.weight);
+  qline("Ширина", b.width);
+  qline("Висота", b.height);
+  qline("Глибина", b.depth);
+  if (b.size) {
+    if (typeof b.size === "string") lines.push(`Розмір: ${b.size}`);
+    else if (typeof b.size === "object") qline("Розмір", b.size);
+  }
+  if (!lines.length) return null;
+  return lines.join(" · ").slice(0, 500);
+}
+
 function fromJsonLdProduct(block: unknown, pageUrl: string): ImportedProduct | null {
   if (!block || typeof block !== "object") return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -212,6 +258,8 @@ function fromJsonLdProduct(block: unknown, pageUrl: string): ImportedProduct | n
         ? b["@id"]
         : pageUrl;
 
+  const dimensionsText = buildDimensionsFromJsonLd(b);
+
   return {
     title: title.slice(0, 200),
     description,
@@ -220,6 +268,7 @@ function fromJsonLdProduct(block: unknown, pageUrl: string): ImportedProduct | n
     photos: photos.slice(0, 8),
     sourceUrl: canonical,
     externalId: b.sku != null ? String(b.sku) : b.gtin != null ? String(b.gtin) : undefined,
+    dimensionsText: dimensionsText ?? undefined,
   };
 }
 
@@ -292,6 +341,7 @@ function fromOpenGraph(html: string, url: string): ImportedProduct | null {
     priceTokens: 0,
     photos: image ? [abs(image, url)] : [],
     sourceUrl: url,
+    dimensionsText: undefined,
   };
 }
 
@@ -356,6 +406,171 @@ function parseProductsFromHtml(html: string, pageUrl: string, limit: number): Im
   }
 
   return out.slice(0, limit);
+}
+
+function extractLocsFromXml(xml: string): string[] {
+  const out: string[] = [];
+  const re = /<loc>\s*([^<]+)\s*<\/loc>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml))) out.push(m[1].trim());
+  return out;
+}
+
+function urlDedupeKey(href: string): string {
+  try {
+    const u = new URL(href);
+    u.hash = "";
+    let p = u.pathname;
+    if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
+    u.pathname = p;
+    return u.href.toLowerCase();
+  } catch {
+    return href;
+  }
+}
+
+/**
+ * Збирає адреси карток товарів: sitemap (вкл. індекс), robots.txt, посилання з головної та введеної сторінки.
+ */
+export async function discoverProductUrls(entryUrl: string, max: number): Promise<string[]> {
+  const base = new URL(entryUrl);
+  const origin = base.origin;
+  const seen = new Map<string, string>();
+
+  const add = (raw: string) => {
+    try {
+      const n = new URL(raw.trim(), origin).href.split("#")[0];
+      if (!n.startsWith(origin)) return;
+      if (!isLikelyProductUrl(n)) return;
+      const k = urlDedupeKey(n);
+      if (!seen.has(k)) seen.set(k, n);
+    } catch {
+      /* skip */
+    }
+  };
+
+  const sitemapSeeds = [
+    `${origin}/sitemap.xml`,
+    `${origin}/sitemap_index.xml`,
+    `${origin}/wp-sitemap.xml`,
+    `${origin}/sitemap-products.xml`,
+    `${origin}/product-sitemap.xml`,
+  ];
+
+  try {
+    const robots = await fetchHtml(`${origin}/robots.txt`);
+    for (const line of robots.split(/\r?\n/)) {
+      const m = line.match(/^\s*Sitemap:\s*(.+)\s*$/i);
+      if (m) sitemapSeeds.push(m[1].trim());
+    }
+  } catch {
+    /* no robots */
+  }
+
+  const tried = new Set<string>();
+  for (const sm of sitemapSeeds) {
+    if (seen.size >= max) break;
+    if (tried.has(sm)) continue;
+    tried.add(sm);
+    let xml: string;
+    try {
+      xml = await fetchHtml(sm);
+    } catch {
+      continue;
+    }
+    const isIndex = /<sitemapindex[\s>]/i.test(xml);
+    if (isIndex) {
+      const nested = extractLocsFromXml(xml).filter((l) => /\.xml(\?|$)/i.test(l));
+      for (const nestedUrl of nested.slice(0, 20)) {
+        if (seen.size >= max) break;
+        if (tried.has(nestedUrl)) continue;
+        tried.add(nestedUrl);
+        try {
+          const inner = await fetchHtml(nestedUrl);
+          for (const loc of extractLocsFromXml(inner)) {
+            add(loc);
+            if (seen.size >= max) break;
+          }
+        } catch {
+          /* skip */
+        }
+      }
+    } else {
+      for (const loc of extractLocsFromXml(xml)) {
+        add(loc);
+        if (seen.size >= max) break;
+      }
+    }
+  }
+
+  const pageSeeds = [entryUrl, `${origin}/`, `${origin}/shop`, `${origin}/shop/`, `${origin}/catalog/`, `${origin}/store/`];
+  for (const seed of pageSeeds) {
+    if (seen.size >= max) break;
+    try {
+      const html = await fetchHtml(seed);
+      for (const u of collectSameOriginProductLinks(html, seed, 120)) add(u);
+    } catch {
+      /* skip */
+    }
+  }
+
+  return [...seen.values()].slice(0, max);
+}
+
+/**
+ * Повний прохід: знайти URL товарів на сайті й зчитати кожну сторінку (обмеження — захист таймаутів).
+ */
+export async function fetchSiteProductCatalog(
+  entryUrl: string,
+  options: { maxUrls?: number; maxFetch?: number; concurrency?: number } = {},
+): Promise<ImportedProduct[]> {
+  const maxUrls = options.maxUrls ?? 220;
+  const maxFetch = options.maxFetch ?? 90;
+  const concurrency = Math.max(1, Math.min(8, options.concurrency ?? 5));
+
+  if (!/^https?:\/\//i.test(entryUrl)) {
+    throw new Error("URL має починатись з http:// або https://");
+  }
+
+  const normalized = new URL(entryUrl).href;
+  const urls = await discoverProductUrls(normalized, maxUrls);
+  const merged: string[] = [];
+  const pushU = (u: string) => {
+    const k = urlDedupeKey(u);
+    if (merged.some((x) => urlDedupeKey(x) === k)) return;
+    merged.push(u.split("#")[0]);
+  };
+  if (isLikelyProductUrl(normalized)) pushU(normalized);
+  for (const u of urls) pushU(u);
+  let toFetch = merged.slice(0, maxFetch);
+  if (toFetch.length === 0) toFetch = [normalized];
+
+  const out: ImportedProduct[] = [];
+  const got = new Set<string>();
+
+  for (let i = 0; i < toFetch.length; i += concurrency) {
+    const batch = toFetch.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      batch.map(async (u) => {
+        try {
+          const html = await fetchHtml(u);
+          const ps = parseProductsFromHtml(html, u, 1);
+          return ps[0] ?? null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+    for (const p of batchResults) {
+      if (!p) continue;
+      const k = urlDedupeKey(p.sourceUrl) + "\0" + p.title.toLowerCase();
+      if (got.has(k)) continue;
+      got.add(k);
+      out.push(p);
+    }
+  }
+
+  return out;
 }
 
 export async function fetchAndParseProducts(

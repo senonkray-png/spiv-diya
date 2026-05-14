@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
-import { fetchAndParseProducts } from "@/lib/import/site-importer";
+import { fetchAndParseProducts, fetchSiteProductCatalog } from "@/lib/import/site-importer";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -22,9 +23,14 @@ export async function POST(req: NextRequest) {
   const url = String(body?.url ?? "").trim();
   if (!url) return NextResponse.json({ error: "Вкажіть URL" }, { status: 400 });
 
+  const mode = body?.mode === "page" ? "page" : "site";
+
   try {
-    const items = await fetchAndParseProducts(url, { limit: 30 });
-    return NextResponse.json({ items });
+    const items =
+      mode === "page"
+        ? await fetchAndParseProducts(url, { limit: 30, linkFollow: 12 })
+        : await fetchSiteProductCatalog(url, { maxUrls: 220, maxFetch: 90, concurrency: 5 });
+    return NextResponse.json({ items, mode });
   } catch (err: unknown) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Import failed" },
