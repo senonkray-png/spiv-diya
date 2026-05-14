@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
+import { translateContent, injectTranslation, deleteTranslations, parseLocaleFromCookie } from "@/lib/translate";
 
 interface Ctx {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_req: NextRequest, { params }: Ctx) {
+export async function GET(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const service = await prisma.serviceAd.findUnique({
     where: { id },
@@ -27,7 +28,9 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     },
   });
   if (!service) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ service });
+  const locale = parseLocaleFromCookie(req.headers.get("cookie"));
+  const translated = await injectTranslation(service, "service", locale);
+  return NextResponse.json({ service: translated });
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
@@ -65,6 +68,11 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   }
 
   const updated = await prisma.serviceAd.update({ where: { id }, data: update });
+
+  if (typeof update.title === "string" || typeof update.description === "string") {
+    void translateContent("service", id, { title: updated.title, description: updated.description });
+  }
+
   return NextResponse.json({ service: updated });
 }
 
@@ -85,5 +93,6 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   }
 
   await prisma.serviceAd.delete({ where: { id } });
+  void deleteTranslations("service", id);
   return NextResponse.json({ ok: true });
 }

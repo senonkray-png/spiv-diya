@@ -4,12 +4,13 @@ import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
 import { classifyMarketplaceProduct } from "@/lib/product-catalog-classify";
 import { syncPriceTokensFromUah } from "@/lib/pricing";
+import { translateContent, injectTranslation, deleteTranslations, parseLocaleFromCookie } from "@/lib/translate";
 
 interface Ctx {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_req: NextRequest, { params }: Ctx) {
+export async function GET(req: NextRequest, { params }: Ctx) {
   const { id } = await params;
   const product = await prisma.product.findUnique({
     where: { id },
@@ -30,7 +31,9 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
     },
   });
   if (!product) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ product });
+  const locale = parseLocaleFromCookie(req.headers.get("cookie"));
+  const translated = await injectTranslation(product, "product", locale);
+  return NextResponse.json({ product: translated });
 }
 
 export async function PATCH(req: NextRequest, { params }: Ctx) {
@@ -112,6 +115,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     update.isPromotional = labels.isPromotional;
   }
 
+  const textUpdated = typeof update.title === "string" || typeof update.description === "string";
   const oldTokens = product.priceTokens;
   const oldUAH = product.priceUAH;
   const updated = await prisma.product.update({ where: { id }, data: update });
@@ -180,6 +184,13 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     }
   }
 
+  if (textUpdated) {
+    void translateContent("product", id, {
+      title: updated.title,
+      description: updated.description,
+    });
+  }
+
   return NextResponse.json({ product: updated });
 }
 
@@ -200,5 +211,6 @@ export async function DELETE(_req: NextRequest, { params }: Ctx) {
   }
 
   await prisma.product.delete({ where: { id } });
+  void deleteTranslations("product", id);
   return NextResponse.json({ ok: true });
 }

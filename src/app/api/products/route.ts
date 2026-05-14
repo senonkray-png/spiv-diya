@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
 import { classifyMarketplaceProduct } from "@/lib/product-catalog-classify";
 import { syncPriceTokensFromUah } from "@/lib/pricing";
+import { translateContent, injectTranslations, parseLocaleFromCookie } from "@/lib/translate";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -51,7 +52,9 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ products });
+  const locale = parseLocaleFromCookie(req.headers.get("cookie"));
+  const translated = await injectTranslations(products, "product", locale);
+  return NextResponse.json({ products: translated });
 }
 
 export async function POST(req: NextRequest) {
@@ -140,6 +143,9 @@ export async function POST(req: NextRequest) {
       })),
     });
   }
+
+  // Fire-and-forget translation — does not block the response
+  void translateContent("product", product.id, { title, description });
 
   return NextResponse.json({ product });
 }

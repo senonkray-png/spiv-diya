@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
+import { translateContent, injectTranslations, parseLocaleFromCookie } from "@/lib/translate";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -47,7 +48,9 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ services });
+  const locale = parseLocaleFromCookie(req.headers.get("cookie"));
+  const translated = await injectTranslations(services, "service", locale);
+  return NextResponse.json({ services: translated });
 }
 
 export async function POST(req: NextRequest) {
@@ -92,6 +95,8 @@ export async function POST(req: NextRequest) {
       photos,
     },
   });
+
+  void translateContent("service", service.id, { title, description });
 
   return NextResponse.json({ service });
 }

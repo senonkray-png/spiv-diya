@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { translateContent, injectTranslation, deleteTranslations, parseLocaleFromCookie } from "@/lib/translate";
 
 interface Ctx {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_req: NextRequest, ctx: Ctx) {
+export async function GET(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params;
   const post = await prisma.post.findUnique({
     where: { id },
@@ -17,9 +18,10 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     },
   });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  // Increment views (best-effort, no auth)
   await prisma.post.update({ where: { id }, data: { views: { increment: 1 } } }).catch(() => {});
-  return NextResponse.json({ post });
+  const locale = parseLocaleFromCookie(req.headers.get("cookie"));
+  const translated = await injectTranslation(post, "post", locale);
+  return NextResponse.json({ post: translated });
 }
 
 export async function PATCH(req: NextRequest, ctx: Ctx) {
@@ -41,6 +43,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if (body.status === "active" || body.status === "removed") data.status = body.status;
 
   const updated = await prisma.post.update({ where: { id }, data });
+
+  if (typeof data.title === "string" || typeof data.body === "string") {
+    void translateContent("post", id, { title: updated.title, body: updated.body });
+  }
+
   return NextResponse.json({ post: updated });
 }
 
@@ -56,5 +63,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   }
 
   await prisma.post.delete({ where: { id } });
+  void deleteTranslations("post", id);
   return NextResponse.json({ ok: true });
 }

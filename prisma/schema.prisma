@@ -680,6 +680,21 @@ model Rating {
   @@index([targetUserId])
 }
 
+// ─── Auto-translations (background AI translation of user content) ───────────
+
+model ContentTranslation {
+  id         String   @id @default(cuid())
+  entityType String   // "product" | "service" | "post" | "resource"
+  entityId   String
+  locale     String   // "ru" | "en"
+  fields     Json     // { "title": "...", "description": "...", "body": "..." }
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([entityType, entityId, locale])
+  @@index([entityType, entityId])
+}
+
 // ─── Suspicious price activity (auto-flagging product price manipulation) ─────
 
 model PriceLog {

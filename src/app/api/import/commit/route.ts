@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
 import { classifyMarketplaceProductHeuristic } from "@/lib/product-catalog-classify";
+import { translateContent } from "@/lib/translate";
 import { syncPriceTokensFromUah } from "@/lib/pricing";
 
 export const runtime = "nodejs";
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
       },
     });
     created.push(product.id);
+    void translateContent("product", product.id, { title: product.title, description: product.description });
   }
 
   return NextResponse.json({ created: created.length });
