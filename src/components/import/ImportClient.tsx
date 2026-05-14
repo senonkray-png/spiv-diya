@@ -32,7 +32,7 @@ interface PreviewItem {
   dimensionsText?: string | null;
 }
 
-type ImportMode = "site" | "page" | "browse";
+type ImportMode = "site" | "page" | "browse" | "smart";
 
 export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
   const router = useRouter();
@@ -43,6 +43,9 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
   const [error, setError] = useState("");
   const [committed, setCommitted] = useState<number | null>(null);
   const [lastMode, setLastMode] = useState<ImportMode>("site");
+
+  const [smartLogs, setSmartLogs] = useState<Array<{ text: string; error?: boolean }>>([]);
+  const [smartBusy, setSmartBusy] = useState(false);
 
   const [browseConfigJson, setBrowseConfigJson] = useState(BROWSE_CONFIG_DEFAULT);
 
@@ -104,6 +107,73 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
     }
   }
 
+  async function smartPreview() {
+    const trimmed = url.trim();
+    if (!trimmed) {
+      setError("Вставте посилання на каталог товарів.");
+      return;
+    }
+    setSmartBusy(true);
+    setSmartLogs([]);
+    setError("");
+    setCommitted(null);
+    setItems([]);
+    setLastMode("smart");
+
+    try {
+      const res = await fetch(`/api/import/smart?url=${encodeURIComponent(trimmed)}`);
+      if (!res.ok || !res.body) {
+        setError("Не вдалося запустити аналіз.");
+        setSmartBusy(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          const eventMatch = part.match(/^event: (\w+)/m);
+          const dataMatch = part.match(/^data: (.+)$/m);
+          if (!eventMatch || !dataMatch) continue;
+
+          const event = eventMatch[1];
+          let payload: { text?: string; isError?: boolean; items?: PreviewItem[]; error?: string };
+          try {
+            payload = JSON.parse(dataMatch[1]);
+          } catch {
+            continue;
+          }
+
+          if (event === "log") {
+            setSmartLogs((prev) => [...prev, { text: payload.text ?? "", error: !!payload.isError }]);
+          } else if (event === "done") {
+            const fetched = (payload.items as PreviewItem[]) ?? [];
+            setItems(fetched);
+            const sel: Record<number, boolean> = {};
+            fetched.forEach((_, i) => (sel[i] = true));
+            setSelected(sel);
+            if (fetched.length === 0) {
+              setError(payload.error ?? "Товари не знайдено. Перевірте URL каталогу.");
+            }
+          }
+        }
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Помилка");
+    } finally {
+      setSmartBusy(false);
+    }
+  }
+
   async function commit() {
     setBusy(true);
     setError("");
@@ -162,6 +232,16 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
             >
               Лише ця сторінка
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void smartPreview()}
+              loading={smartBusy}
+              disabled={busy || smartBusy}
+              size="md"
+            >
+              Аналіз сайту (Puppeteer)
+            </Button>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Вставте URL і натисніть «Знайти товари» або клавішу Enter. Збираємо адреси з sitemap, rel=next та посилань
@@ -177,6 +257,36 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
           </p>
         )}
       </Card>
+
+      {(smartBusy || smartLogs.length > 0) && (
+        <Card padding="md">
+          <h3 className="font-semibold text-sm text-zinc-900 dark:text-white mb-2">
+            {smartBusy ? "Збираємо товари..." : "Аналіз завершено"}
+          </h3>
+          <div className="max-h-48 overflow-y-auto rounded-lg bg-zinc-950 p-3 font-mono text-xs space-y-0.5">
+            {smartLogs.map((log, i) => (
+              <div key={i} className={log.error ? "text-red-400" : "text-green-300"}>
+                {log.text}
+              </div>
+            ))}
+            {smartBusy && (
+              <div className="text-zinc-400 animate-pulse">▌</div>
+            )}
+          </div>
+          {!smartBusy && items.length > 0 && (
+            <div className="mt-3">
+              <Button
+                onClick={() => void commit()}
+                loading={busy}
+                disabled={Object.values(selected).filter(Boolean).length === 0}
+                className="w-full"
+              >
+                Імпортувати {Object.values(selected).filter(Boolean).length} товарів у каталог
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
 
       {SHOW_HEADLESS_IMPORT && (
         <Card padding="md">
