@@ -359,6 +359,27 @@ async function fetchHtml(url: string): Promise<string> {
   return res.text();
 }
 
+/** Наступна сторінка каталогу (типові патерни для SEO-пагінації). */
+function extractRelNextUrl(html: string, baseUrl: string): string | null {
+  const patterns = [
+    /<link[^>]+rel=["']next["'][^>]+href=["']([^"']+)["']/i,
+    /<link[^>]+href=["']([^"']+)["'][^>]+rel=["']next["']/i,
+    /<a[^>]+rel=["']next["'][^>]+href=["']([^"']+)["']/i,
+    /<a[^>]+href=["']([^"']+)["'][^>]+rel=["']next["']/i,
+  ];
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m?.[1]) {
+      try {
+        return new URL(m[1].trim(), baseUrl).href.split("#")[0];
+      } catch {
+        continue;
+      }
+    }
+  }
+  return null;
+}
+
 function collectSameOriginProductLinks(html: string, baseUrl: string, max: number): string[] {
   let origin: string;
   try {
@@ -508,10 +529,37 @@ export async function discoverProductUrls(entryUrl: string, max: number): Promis
     if (seen.size >= max) break;
     try {
       const html = await fetchHtml(seed);
-      for (const u of collectSameOriginProductLinks(html, seed, 120)) add(u);
+      const linkCap = urlDedupeKey(seed) === urlDedupeKey(entryUrl) ? 600 : 160;
+      for (const u of collectSameOriginProductLinks(html, seed, linkCap)) add(u);
     } catch {
       /* skip */
     }
+  }
+
+  // Каталог з rel=next: збираємо картки з кількох сторінок списку (надбавка до sitemap).
+  try {
+    const entry = new URL(entryUrl).href.split("#")[0];
+    let listingUrl: string | null = entry;
+    const visitedListings = new Set<string>();
+    const maxListingHops = 28;
+    let hops = 0;
+    while (listingUrl && hops < maxListingHops && seen.size < max) {
+      if (visitedListings.has(listingUrl)) break;
+      visitedListings.add(listingUrl);
+      hops += 1;
+      let html: string;
+      try {
+        html = await fetchHtml(listingUrl);
+      } catch {
+        break;
+      }
+      for (const u of collectSameOriginProductLinks(html, listingUrl, 500)) add(u);
+      const nextU = extractRelNextUrl(html, listingUrl);
+      if (!nextU || nextU === listingUrl) break;
+      listingUrl = nextU;
+    }
+  } catch {
+    /* skip */
   }
 
   return [...seen.values()].slice(0, max);
@@ -524,8 +572,8 @@ export async function fetchSiteProductCatalog(
   entryUrl: string,
   options: { maxUrls?: number; maxFetch?: number; concurrency?: number } = {},
 ): Promise<ImportedProduct[]> {
-  const maxUrls = options.maxUrls ?? 220;
-  const maxFetch = options.maxFetch ?? 90;
+  const maxUrls = options.maxUrls ?? 500;
+  const maxFetch = options.maxFetch ?? 200;
   const concurrency = Math.max(1, Math.min(8, options.concurrency ?? 5));
 
   if (!/^https?:\/\//i.test(entryUrl)) {
@@ -585,7 +633,7 @@ export async function fetchAndParseProducts(
   }
 
   const html = await fetchHtml(url);
-  let out = parseProductsFromHtml(html, url, limit);
+  const out = parseProductsFromHtml(html, url, limit);
 
   if (out.length === 0 && linkFollow > 0) {
     const links = collectSameOriginProductLinks(html, url, linkFollow);

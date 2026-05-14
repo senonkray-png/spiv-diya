@@ -6,7 +6,13 @@ import { classifyMarketplaceProductHeuristic } from "@/lib/product-catalog-class
 import { syncPriceTokensFromUah } from "@/lib/pricing";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
+
+function commitMax(): number {
+  const n = parseInt(process.env.IMPORT_COMMIT_MAX ?? "300", 10);
+  if (Number.isNaN(n)) return 300;
+  return Math.min(500, Math.max(1, n));
+}
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -25,8 +31,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const maxItems = commitMax();
   const created = [];
-  for (const raw of items.slice(0, 120)) {
+  for (const raw of items.slice(0, maxItems)) {
     const title = String(raw?.title ?? "").trim();
     const description = String(raw?.description ?? "").trim();
     if (!title || !description) continue;

@@ -7,6 +7,20 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 
+const BROWSE_CONFIG_DEFAULT = `{
+  "maxPages": 10,
+  "selectors": {
+    "productCard": ".product-item",
+    "title": ".product-title",
+    "price": ".price-value",
+    "image": "img.main-photo",
+    "volume": ".attr-volume",
+    "nextPage": "a.next-page-btn"
+  }
+}`;
+
+const SHOW_HEADLESS_IMPORT = process.env.NEXT_PUBLIC_IMPORT_HEADLESS === "1";
+
 interface PreviewItem {
   title: string;
   description: string;
@@ -18,7 +32,7 @@ interface PreviewItem {
   dimensionsText?: string | null;
 }
 
-type ImportMode = "site" | "page";
+type ImportMode = "site" | "page" | "browse";
 
 export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
   const router = useRouter();
@@ -30,16 +44,42 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
   const [committed, setCommitted] = useState<number | null>(null);
   const [lastMode, setLastMode] = useState<ImportMode>("site");
 
+  const [browseConfigJson, setBrowseConfigJson] = useState(BROWSE_CONFIG_DEFAULT);
+
   async function preview(mode: ImportMode) {
     setBusy(true);
     setError("");
     setCommitted(null);
     setLastMode(mode);
     try {
+      const trimmed = url.trim();
+      if (!trimmed) {
+        setError("Вставте посилання на магазин або каталог.");
+        return;
+      }
+
+      let body: Record<string, unknown> = { url: trimmed, mode };
+
+      if (mode === "browse") {
+        let parsed: { maxPages?: number; selectors?: Record<string, string> };
+        try {
+          parsed = JSON.parse(browseConfigJson) as { maxPages?: number; selectors?: Record<string, string> };
+        } catch {
+          setError("Некоректний JSON у блоці селекторів.");
+          return;
+        }
+        body = {
+          url: trimmed,
+          mode: "browse",
+          maxPages: typeof parsed.maxPages === "number" ? parsed.maxPages : 10,
+          selectors: parsed.selectors && typeof parsed.selectors === "object" ? parsed.selectors : {},
+        };
+      }
+
       const res = await fetch("/api/import/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim(), mode }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error ?? "Помилка");
@@ -51,8 +91,10 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
       if (fetched.length === 0) {
         setError(
           mode === "site"
-            ? "Не знайшли товари за sitemap і посиланнями. Спробуйте головну сторінку магазину або режим «лише ця сторінка»."
-            : "На цій сторінці не вдалось розпізнати товар. Перевірте наявність мікророзмітки або відкрийте картку товару.",
+            ? "Не знайшли товари за sitemap і посиланнями. Спробуйте URL каталогу, режим «лише ця сторінка» на картці товару або (на VPS) режим з браузером, якщо він увімкнений."
+            : mode === "browse"
+              ? "На сторінці не знайдено карток за вашими селекторами. Перевірте CSS і кількість сторінок пагінації."
+              : "На цій сторінці не вдалось розпізнати товар. Перевірте наявність мікророзмітки або відкрийте картку товару.",
         );
       }
     } catch (e: unknown) {
@@ -98,11 +140,17 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (!busy) void preview("site");
+              }
+            }}
             placeholder="https://ваш-магазин.ua"
           />
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Button onClick={() => void preview("site")} loading={busy} className="sm:min-w-[14rem]" size="md">
-              Отримати товари з сайту
+              Знайти товари (пошук)
             </Button>
             <Button
               type="button"
@@ -116,9 +164,8 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
             </Button>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Перший крок: вставте URL магазину (головна, каталог або товар). Другий крок: натисніть «Отримати товари з
-            сайту» — ми зберемо адреси з sitemap і посилань і підтягнемо фото, назву, опис, ціну та характеристики з
-            мікророзмітки, якщо вони є.
+            Вставте URL і натисніть «Знайти товари» або клавішу Enter. Збираємо адреси з sitemap, rel=next та посилань
+            на сторінках, потім зчитуємо картки (до ліміту на сервері). Підтримуються Schema.org Product та Open Graph.
           </p>
         </div>
         {error && (
@@ -131,13 +178,47 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
         )}
       </Card>
 
+      {SHOW_HEADLESS_IMPORT && (
+        <Card padding="md">
+          <h3 className="font-semibold text-sm text-zinc-900 dark:text-white mb-1">
+            Розширений режим: каталог у браузері (JavaScript)
+          </h3>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+            Потрібні змінні на сервері: <code className="rounded bg-zinc-100 dark:bg-zinc-800 px-1">IMPORT_ENABLE_HEADLESS=1</code>.
+            URL каталогу — у полі зверху. Нижче — JSON з <code className="rounded bg-zinc-100 dark:bg-zinc-800 px-1">maxPages</code> та{" "}
+            <code className="rounded bg-zinc-100 dark:bg-zinc-800 px-1">selectors</code> (як у scripts/import-selectors.example.json).
+          </p>
+          <textarea
+            value={browseConfigJson}
+            onChange={(e) => setBrowseConfigJson(e.target.value)}
+            spellCheck={false}
+            rows={12}
+            className="w-full font-mono text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-2 text-zinc-800 dark:text-zinc-200"
+          />
+          <div className="mt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void preview("browse")}
+              loading={busy}
+              disabled={busy}
+              size="md"
+            >
+              Зібрати картки з каталогу (браузер)
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {items.length === 0 && committed === null && !busy && (
         <EmptyState
           title="Два кліки до імпорту"
           description={
             lastMode === "site"
-              ? "Вставте адресу сайту і натисніть «Отримати товари з сайту». Якщо товарів мало — натисніть «Лише ця сторінка» на відкритій картці товару."
-              : "Відкрийте в браузері сторінку одного товару, скопіюйте URL сюди й оберіть «Лише ця сторінка»."
+              ? "Вставте адресу сайту й натисніть «Знайти товари» або Enter. Якщо список порожній — спробуйте «Лише ця сторінка» на картці товару."
+              : lastMode === "browse"
+                ? "Перевірте селектори та maxPages у JSON, або увімкніть IMPORT_ENABLE_HEADLESS на сервері."
+                : "Відкрийте в браузері сторінку одного товару, скопіюйте URL сюди й оберіть «Лише ця сторінка»."
           }
         />
       )}
@@ -147,7 +228,11 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-zinc-900 dark:text-white">
               Знайдено {items.length}{" "}
-              {lastMode === "site" ? "(обхід сайту)" : "(одна сторінка)"}
+              {lastMode === "site"
+                ? "(обхід сайту)"
+                : lastMode === "browse"
+                  ? "(каталог у браузері)"
+                  : "(одна сторінка)"}
             </h3>
             <button
               type="button"
@@ -182,7 +267,7 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
                     onChange={(e) => setSelected((prev) => ({ ...prev, [i]: e.target.checked }))}
                     className="mt-1 h-4 w-4 rounded text-blue-600"
                   />
-                  {it.photos[0] && (
+                  {it.photos?.[0] && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={it.photos[0]}
@@ -238,7 +323,13 @@ export function ImportClient({ defaultUrl }: { defaultUrl: string }) {
                         rel="noreferrer"
                         className="text-zinc-400 hover:text-blue-600 truncate max-w-[10rem]"
                       >
-                        {new URL(it.sourceUrl).hostname}
+                        {(() => {
+                          try {
+                            return new URL(it.sourceUrl).hostname;
+                          } catch {
+                            return "посилання";
+                          }
+                        })()}
                       </a>
                     </div>
                   </div>

@@ -1,0 +1,12 @@
+{
+  "targetUrl": "https://example-shop.com/category",
+  "maxPages": 5,
+  "selectors": {
+    "productCard": ".product-item",
+    "title": ".product-title",
+    "price": ".price-value",
+    "image": "img.main-photo",
+    "volume": ".attr-volume",
+    "nextPage": "a.next-page-btn"
+  }
+}

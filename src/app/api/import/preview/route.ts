@@ -3,9 +3,19 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
 import { fetchAndParseProducts, fetchSiteProductCatalog } from "@/lib/import/site-importer";
+import {
+  defaultCatalogSelectors,
+  scrapeCatalogWithPuppeteer,
+  type CatalogSelectors,
+} from "@/lib/import/puppeteer-catalog";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
+
+function clampInt(n: number, lo: number, hi: number): number {
+  if (Number.isNaN(n)) return lo;
+  return Math.min(hi, Math.max(lo, n));
+}
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -23,13 +33,39 @@ export async function POST(req: NextRequest) {
   const url = String(body?.url ?? "").trim();
   if (!url) return NextResponse.json({ error: "Вкажіть URL" }, { status: 400 });
 
-  const mode = body?.mode === "page" ? "page" : "site";
+  const mode: "site" | "page" | "browse" =
+    body?.mode === "page" ? "page" : body?.mode === "browse" ? "browse" : "site";
+
+  const maxUrls = clampInt(parseInt(process.env.IMPORT_MAX_URLS ?? "600", 10) || 600, 50, 2500);
+  const maxFetch = clampInt(parseInt(process.env.IMPORT_MAX_FETCH ?? "220", 10) || 220, 20, 400);
+  const concurrency = clampInt(parseInt(process.env.IMPORT_FETCH_CONCURRENCY ?? "5", 10) || 5, 1, 8);
 
   try {
-    const items =
-      mode === "page"
-        ? await fetchAndParseProducts(url, { limit: 30, linkFollow: 12 })
-        : await fetchSiteProductCatalog(url, { maxUrls: 220, maxFetch: 90, concurrency: 5 });
+    let items;
+
+    if (mode === "browse") {
+      if (process.env.IMPORT_ENABLE_HEADLESS !== "1") {
+        return NextResponse.json(
+          {
+            error:
+              "Режим «каталог у браузері» вимкнено. Для VPS/локально задайте IMPORT_ENABLE_HEADLESS=1 або використайте «Отримати товари з сайту».",
+          },
+          { status: 403 },
+        );
+      }
+      const rawSel = body?.selectors;
+      const selectors: CatalogSelectors = {
+        ...defaultCatalogSelectors,
+        ...(rawSel && typeof rawSel === "object" ? (rawSel as Partial<CatalogSelectors>) : {}),
+      };
+      const maxPages = clampInt(Number(body?.maxPages) || 10, 1, 30);
+      items = await scrapeCatalogWithPuppeteer(url, { selectors, maxPages });
+    } else if (mode === "page") {
+      items = await fetchAndParseProducts(url, { limit: 30, linkFollow: 12 });
+    } else {
+      items = await fetchSiteProductCatalog(url, { maxUrls, maxFetch, concurrency });
+    }
+
     return NextResponse.json({ items, mode });
   } catch (err: unknown) {
     return NextResponse.json(

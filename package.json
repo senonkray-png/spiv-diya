@@ -7,7 +7,8 @@
     "build": "prisma generate && prisma migrate deploy && next build",
     "postinstall": "prisma generate",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "import:scrape": "node scripts/puppeteer-shop-parse.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
@@ -35,6 +36,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "puppeteer": "^24.43.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
