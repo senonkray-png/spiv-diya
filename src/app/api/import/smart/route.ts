@@ -2,9 +2,6 @@ import { NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
-import { spawn } from "node:child_process";
-import path from "node:path";
-import fs from "node:fs";
 
 export const runtime = "nodejs";
 
@@ -27,8 +24,16 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url")?.trim();
   if (!url) return new Response("url required", { status: 400 });
 
+  // Dynamic imports keep webpack from trying to bundle Node built-ins at build time
+  const [{ spawn }, { default: path }, { default: fs }] = await Promise.all([
+    import("node:child_process"),
+    import("node:path"),
+    import("node:fs"),
+  ]);
+
   const scriptPath = path.join(process.cwd(), "scripts/analitik-pars.mjs");
   const outputPath = path.join(process.cwd(), "data/smart-results.json");
+  const dataDir = path.join(process.cwd(), "data");
 
   const encoder = new TextEncoder();
 
@@ -36,12 +41,10 @@ export async function GET(req: NextRequest) {
     return encoder.encode(`event: ${event}\ndata: ${data}\n\n`);
   }
 
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+
   const stream = new ReadableStream({
     start(controller) {
-      // Ensure data dir exists
-      const dataDir = path.join(process.cwd(), "data");
-      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-
       const child = spawn("node", [scriptPath, url], {
         env: { ...process.env },
       });
