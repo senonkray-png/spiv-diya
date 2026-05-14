@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/Button";
 
 interface Props {
   productId?: string;
@@ -25,8 +24,6 @@ export function ProductActions({
 }: Props) {
   const [fav, setFav] = useState(isFav);
   const [busy, setBusy] = useState(false);
-  const [purchasing, setPurchasing] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
 
   if (isOwner) {
     return (
@@ -75,28 +72,6 @@ export function ProductActions({
     }
   }
 
-  async function buy() {
-    if (!productId) return;
-    if (!confirm("Підтвердити купівлю за СпівМонети?")) return;
-    setPurchasing(true);
-    setMsg(null);
-    try {
-      const res = await fetch("/api/wallet/purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productId }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setMsg(data?.error ?? "Не вдалось придбати");
-      } else {
-        setMsg("Готово! Продавцю надіслано повідомлення.");
-      }
-    } finally {
-      setPurchasing(false);
-    }
-  }
-
   const ctxParam = productId
     ? `?to=${ownerId}&context=product&id=${productId}`
     : `?to=${ownerId}&context=service&id=${serviceId}`;
@@ -124,20 +99,21 @@ export function ProductActions({
       </div>
 
       {productId && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={buy} loading={purchasing}>
-            Купити за монети
-          </Button>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Link
             href={`/dashboard/partners/new?to=${ownerId}`}
             className="text-center bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-medium px-4 py-3 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700"
           >
             Запросити в партнери
           </Link>
+          <Link
+            href="/marketplace/cart"
+            className="text-center bg-violet-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-violet-700"
+          >
+            Кошик
+          </Link>
         </div>
       )}
-
-      {msg && <p className="text-xs text-zinc-500">{msg}</p>}
     </div>
   );
 }

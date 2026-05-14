@@ -257,7 +257,7 @@ export function SiteHeader({
             )}
             {tabs.length > 0 && (
               <nav
-                className="mx-auto flex max-w-7xl items-center gap-1 overflow-x-auto px-1 py-2 md:px-2"
+                className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-center gap-1 overflow-x-auto px-1 py-2 md:gap-2 md:px-2"
                 aria-label="Маркетплейс"
               >
                 {tabs.map((t) => (

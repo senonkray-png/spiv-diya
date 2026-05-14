@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
 import { classifyMarketplaceProduct } from "@/lib/product-catalog-classify";
+import { syncPriceTokensFromUah } from "@/lib/pricing";
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
@@ -77,8 +78,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Title and description are required" }, { status: 400 });
   }
 
-  const priceTokens = Math.max(0, Math.round(Number(data?.priceTokens ?? 0)));
   const priceUAH = data?.priceUAH != null ? Math.max(0, Math.round(Number(data.priceUAH))) : null;
+  const discountPercent = Math.min(100, Math.max(0, Math.round(Number(data?.discountPercent ?? 0))));
+  let stockQuantity: number | null = null;
+  if (data?.stockQuantity === null || data?.stockQuantity === "") stockQuantity = null;
+  else if (data?.stockQuantity != null && data.stockQuantity !== "")
+    stockQuantity = Math.max(0, Math.round(Number(data.stockQuantity)));
+  const dimensionsText =
+    typeof data?.dimensionsText === "string" ? data.dimensionsText.trim().slice(0, 500) || null : null;
+
+  const priceTokensManual = Math.max(0, Math.round(Number(data?.priceTokens ?? 0)));
+  const priceTokens =
+    priceUAH != null ? syncPriceTokensFromUah(priceUAH, discountPercent) : priceTokensManual;
   const photos = Array.isArray(data?.photos) ? data.photos.filter((p: unknown) => typeof p === "string").slice(0, 10) : [];
   const sellerCat = data?.category ? String(data.category).slice(0, 80) : null;
 
@@ -95,6 +106,9 @@ export async function POST(req: NextRequest) {
       description: description.slice(0, 5000),
       priceTokens,
       priceUAH,
+      discountPercent,
+      stockQuantity,
+      dimensionsText,
       currency: typeof data?.currency === "string" ? data.currency : "UAH",
       category: sellerCat,
       catalogCategory: labels.catalogCategory,

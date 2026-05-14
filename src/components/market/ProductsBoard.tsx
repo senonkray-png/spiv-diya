@@ -14,6 +14,9 @@ interface Product {
   description: string;
   priceTokens: number;
   priceUAH: number | null;
+  discountPercent?: number;
+  stockQuantity?: number | null;
+  dimensionsText?: string | null;
   currency: string;
   photos: string[];
   city: string | null;
@@ -74,6 +77,9 @@ export function ProductsBoard({ ownerId }: { ownerId: string }) {
             description: editing.description,
             priceUAH: editing.priceUAH != null ? String(editing.priceUAH) : "",
             priceTokens: String(editing.priceTokens),
+            discountPercent: String(editing.discountPercent ?? 0),
+            stockQuantity: editing.stockQuantity != null ? String(editing.stockQuantity) : "",
+            dimensionsText: editing.dimensionsText ?? "",
             category: editing.category ?? "",
             city: editing.city ?? "",
             region: editing.region ?? "",

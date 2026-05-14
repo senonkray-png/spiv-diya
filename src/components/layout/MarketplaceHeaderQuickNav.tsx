@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Bell, Heart, LayoutDashboard, ShoppingCart } from "lucide-react";
+import { Bell, Heart, LayoutDashboard, ShoppingCart, Wallet } from "lucide-react";
 
 function loginNext(path: string) {
   return `/login?next=${encodeURIComponent(path)}`;
@@ -101,6 +101,7 @@ export function MarketplaceHeaderIconRail({
   const ctx = useMarketplaceUnreadOptional();
   const total = ctx?.total ?? 0;
 
+  const cart = isAuthenticated ? "/marketplace/cart" : loginNext("/marketplace/cart");
   const wallet = isAuthenticated ? "/dashboard/wallet" : loginNext("/dashboard/wallet");
   const fav = isAuthenticated ? "/dashboard/favorites" : loginNext("/dashboard/favorites");
   const notify = isAuthenticated ? "/dashboard" : loginNext("/dashboard");
@@ -108,8 +109,11 @@ export function MarketplaceHeaderIconRail({
 
   return (
     <div className={`flex items-center gap-0.5 ${className}`}>
-      <IconButton href={wallet} label="Гаманець">
+      <IconButton href={cart} label="Кошик">
         <ShoppingCart className="size-[1.35rem]" aria-hidden />
+      </IconButton>
+      <IconButton href={wallet} label="Гаманець">
+        <Wallet className="size-[1.35rem]" aria-hidden />
       </IconButton>
       <IconButton href={fav} label="Обране">
         <Heart className="size-[1.35rem]" aria-hidden />
@@ -129,13 +133,14 @@ export function MarketplaceMobileBottomNav({ isAuthenticated }: { isAuthenticate
   const ctx = useMarketplaceUnreadOptional();
   const total = ctx?.total ?? 0;
 
+  const cart = isAuthenticated ? "/marketplace/cart" : loginNext("/marketplace/cart");
   const wallet = isAuthenticated ? "/dashboard/wallet" : loginNext("/dashboard/wallet");
   const fav = isAuthenticated ? "/dashboard/favorites" : loginNext("/dashboard/favorites");
   const notify = isAuthenticated ? "/dashboard" : loginNext("/dashboard");
   const cabinet = isAuthenticated ? "/dashboard" : "/login";
 
   const items = [
-    { href: wallet, label: "Кошик", Icon: ShoppingCart, badge: 0 },
+    { href: cart, label: "Кошик", Icon: ShoppingCart, badge: 0 },
     { href: fav, label: "Обране", Icon: Heart, badge: 0 },
     { href: notify, label: "Події", Icon: Bell, badge: total },
     { href: cabinet, label: "Кабінет", Icon: LayoutDashboard, badge: 0 },

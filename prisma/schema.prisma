@@ -95,6 +95,21 @@ enum PartnerStatus {
   rejected
 }
 
+enum ShopFulfillment {
+  pickup
+  delivery
+}
+
+enum ShopOrderStatus {
+  paid
+  cancelled
+}
+
+enum ProductVoteValue {
+  up
+  down
+}
+
 enum WalletTxType {
   deposit
   withdrawal
@@ -185,6 +200,12 @@ model User {
   acceptsPartners Boolean @default(true)
   /// Останні переглянуті slug категорій маркетплейсу (для персоналізації головної)
   marketplaceBrowseCategories String[] @default([])
+
+  cartItems        CartItem[]
+  shopOrders       ShopOrder[]    @relation("ShopBuyer")
+  productVotes     ProductVote[]
+  productComments  ProductComment[]
+  shopOrderLinesAsSeller ShopOrderLine[] @relation("ShopSeller")
 
   assets         Resource[]      @relation("UserAssets")
   deficits       Resource[]      @relation("UserDeficits")
@@ -340,6 +361,11 @@ model Product {
   catalogCategory    String?
   catalogSubcategory String?
   isPromotional      Boolean @default(false)
+  discountPercent    Int     @default(0) // 0–100, знижка від ціни в ₴
+  stockQuantity      Int? // null = без обліку
+  dimensionsText     String? // розміри / габарити, довільний текст
+  likeCount          Int     @default(0)
+  dislikeCount       Int     @default(0)
   city        String?
   region      String?
   photos      String[]      @default([])
@@ -352,10 +378,89 @@ model Product {
   updatedAt   DateTime      @updatedAt
 
   favorites   Favorite[]    @relation("FavProduct")
+  cartItems   CartItem[]
+  orderLines  ShopOrderLine[]
+  votes       ProductVote[]
+  comments    ProductComment[]
 
   @@index([ownerId])
   @@index([status])
   @@index([status, catalogCategory])
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model ShopOrder {
+  id               String            @id @default(cuid())
+  buyerId          String
+  buyer            User              @relation("ShopBuyer", fields: [buyerId], references: [id])
+  status           ShopOrderStatus   @default(paid)
+  fulfillment      ShopFulfillment
+  deliveryAddress  String?           @db.Text
+  deliveryCity     String?
+  deliveryPhone    String?
+  totalUAH         Int
+  totalTokens      Int
+  createdAt        DateTime          @default(now())
+
+  lines ShopOrderLine[]
+
+  @@index([buyerId, createdAt])
+}
+
+model ShopOrderLine {
+  id                       String     @id @default(cuid())
+  orderId                  String
+  order                    ShopOrder  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId                String?
+  product                  Product?   @relation(fields: [productId], references: [id], onDelete: SetNull)
+  sellerId                 String
+  seller                   User       @relation("ShopSeller", fields: [sellerId], references: [id])
+  title                    String
+  unitPriceUAH             Int
+  quantity                 Int
+  discountPercentApplied   Int        @default(0)
+  lineTotalUAH             Int
+  lineTotalTokens          Int
+
+  @@index([orderId])
+  @@index([sellerId])
+}
+
+model ProductVote {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  value     ProductVoteValue
+
+  @@unique([productId, userId])
+  @@index([productId])
+}
+
+model ProductComment {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([productId, createdAt])
 }
 
 model ServiceAd {

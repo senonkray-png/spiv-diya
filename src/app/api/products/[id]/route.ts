@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
 import { classifyMarketplaceProduct } from "@/lib/product-catalog-classify";
+import { syncPriceTokensFromUah } from "@/lib/pricing";
 
 interface Ctx {
   params: Promise<{ id: string }>;
@@ -23,6 +24,7 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
           verified: true,
           phone: true,
           websiteUrl: true,
+          bannerUrl: true,
         },
       },
     },
@@ -59,8 +61,25 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   const update: any = {};
   if (typeof data?.title === "string") update.title = data.title.trim().slice(0, 200);
   if (typeof data?.description === "string") update.description = data.description.trim().slice(0, 5000);
-  if (data?.priceTokens != null) update.priceTokens = Math.max(0, Math.round(Number(data.priceTokens)));
-  if (data?.priceUAH != null) update.priceUAH = data.priceUAH === "" ? null : Math.max(0, Math.round(Number(data.priceUAH)));
+  if ("priceUAH" in data && data.priceUAH !== undefined) {
+    update.priceUAH =
+      data.priceUAH === null || data.priceUAH === "" ? null : Math.max(0, Math.round(Number(data.priceUAH)));
+  }
+  if ("discountPercent" in data) {
+    const n = Number(data.discountPercent);
+    if (!Number.isNaN(n)) {
+      update.discountPercent = Math.min(100, Math.max(0, Math.round(n)));
+    }
+  }
+  if ("stockQuantity" in data) {
+    update.stockQuantity =
+      data.stockQuantity === null || data.stockQuantity === ""
+        ? null
+        : Math.max(0, Math.round(Number(data.stockQuantity)));
+  }
+  if (typeof data?.dimensionsText === "string") {
+    update.dimensionsText = data.dimensionsText.trim().slice(0, 500) || null;
+  }
   if (typeof data?.currency === "string") update.currency = data.currency;
   if (typeof data?.category === "string") update.category = data.category.slice(0, 80) || null;
   if (typeof data?.city === "string") update.city = data.city.slice(0, 80);
@@ -68,6 +87,14 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
   if (Array.isArray(data?.photos)) update.photos = data.photos.filter((p: unknown) => typeof p === "string").slice(0, 10);
   if (typeof data?.status === "string" && ["active", "paused", "removed"].includes(data.status)) {
     update.status = data.status;
+  }
+
+  const nextUAH = update.priceUAH !== undefined ? update.priceUAH : product.priceUAH;
+  const nextDisc = update.discountPercent !== undefined ? update.discountPercent : product.discountPercent;
+  if (nextUAH != null) {
+    update.priceTokens = syncPriceTokensFromUah(nextUAH, nextDisc);
+  } else if (data?.priceTokens != null) {
+    update.priceTokens = Math.max(0, Math.round(Number(data.priceTokens)));
   }
 
   if (textChanged) {

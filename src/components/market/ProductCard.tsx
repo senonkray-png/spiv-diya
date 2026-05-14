@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { effectivePriceUah } from "@/lib/pricing";
 
 interface ProductCardProps {
   product: {
@@ -9,6 +10,7 @@ interface ProductCardProps {
     description: string;
     priceTokens: number;
     priceUAH: number | null;
+    discountPercent?: number;
     currency: string;
     photos: string[];
     city: string | null;
@@ -57,6 +59,13 @@ export function ProductCard({ product, href }: ProductCardProps) {
             </Badge>
           </div>
         )}
+        {(product.discountPercent ?? 0) > 0 && product.status === "active" && (
+          <div className={`absolute ${product.isPromotional ? "top-10" : "top-2"} left-2`}>
+            <Badge variant="amber" size="xs">
+              −{product.discountPercent}%
+            </Badge>
+          </div>
+        )}
         {product.status !== "active" && (
           <div className="absolute top-2 right-2">
             <Badge variant={product.status === "removed" ? "red" : "amber"}>
@@ -71,9 +80,16 @@ export function ProductCard({ product, href }: ProductCardProps) {
         </h3>
         <div className="mt-2 flex items-baseline gap-2 flex-wrap">
           {product.priceUAH != null ? (
-            <span className="text-base font-bold text-zinc-900 dark:text-white">
-              {product.priceUAH.toLocaleString("uk-UA")} ₴
-            </span>
+            <>
+              {(product.discountPercent ?? 0) > 0 && (
+                <span className="text-sm text-zinc-400 line-through">
+                  {product.priceUAH.toLocaleString("uk-UA")} ₴
+                </span>
+              )}
+              <span className="text-base font-bold text-zinc-900 dark:text-white">
+                {effectivePriceUah(product.priceUAH, product.discountPercent ?? 0).toLocaleString("uk-UA")} ₴
+              </span>
+            </>
           ) : product.priceTokens > 0 ? (
             <span className="text-base font-bold text-zinc-900 dark:text-white">
               {product.priceTokens} <span className="text-xs text-zinc-500">монет</span>

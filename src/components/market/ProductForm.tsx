@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { effectivePriceUah, syncPriceTokensFromUah } from "@/lib/pricing";
 
 type Listing = "product" | "service-offer" | "service-request";
 
@@ -16,6 +17,9 @@ interface ProductFormValues {
   description: string;
   priceUAH: string;
   priceTokens: string;
+  discountPercent: string;
+  stockQuantity: string;
+  dimensionsText: string;
   category: string;
   city: string;
   region: string;
@@ -48,6 +52,28 @@ const STEPS = [
   { id: 3, title: "Медіа" },
 ] as const;
 
+function ProductPricePreview({ priceUAH, discountPercent }: { priceUAH: string; discountPercent: string }) {
+  const u = priceUAH === "" ? null : Number(priceUAH);
+  const d = Math.min(100, Math.max(0, Math.round(Number(discountPercent || 0))));
+  if (u == null || Number.isNaN(u) || u <= 0) {
+    return (
+      <p className="text-xs text-muted-foreground -mt-1">
+        Вкажіть ціну в ₴, щоб побачити суму в СпівМонетах.
+      </p>
+    );
+  }
+  const eff = effectivePriceUah(u, d);
+  const tok = syncPriceTokensFromUah(u, d);
+  return (
+    <p className="text-xs text-muted-foreground -mt-1 rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
+      <span className="font-medium text-foreground">{eff.toLocaleString("uk-UA")} ₴</span>
+      {d > 0 && <span> після знижки {d}%</span>}
+      <span className="text-muted-foreground"> ≈ </span>
+      <span className="font-medium text-foreground">{tok} СпівМонет</span>
+    </p>
+  );
+}
+
 export function ProductForm({ kind, initial, onSaved, onCancel, onDeleted }: Props) {
   const reduceMotion = useReducedMotion();
 
@@ -56,6 +82,9 @@ export function ProductForm({ kind, initial, onSaved, onCancel, onDeleted }: Pro
     description: initial?.description ?? "",
     priceUAH: initial?.priceUAH ?? "",
     priceTokens: initial?.priceTokens ?? "0",
+    discountPercent: initial?.discountPercent ?? "0",
+    stockQuantity: initial?.stockQuantity ?? "",
+    dimensionsText: initial?.dimensionsText ?? "",
     category: initial?.category ?? "",
     city: initial?.city ?? "",
     region: initial?.region ?? "",
@@ -115,10 +144,20 @@ export function ProductForm({ kind, initial, onSaved, onCancel, onDeleted }: Pro
       if (form.priceUAH !== "" && Number.isNaN(Number(form.priceUAH)))
         nextErr.priceUAH = "Лише число";
       if (Number(form.priceUAH) < 0) nextErr.priceUAH = "Не може бути від'ємною";
-      if (form.priceTokens !== "" && Number.isNaN(Number(form.priceTokens)))
-        nextErr.priceTokens = "Лише число";
-      const pt = Number(form.priceTokens || 0);
-      if (pt < 0) nextErr.priceTokens = "Не може бути від'ємною";
+      if (kind !== "product") {
+        if (form.priceTokens !== "" && Number.isNaN(Number(form.priceTokens)))
+          nextErr.priceTokens = "Лише число";
+        const pt = Number(form.priceTokens || 0);
+        if (pt < 0) nextErr.priceTokens = "Не може бути від'ємною";
+      } else {
+        const d = Number(form.discountPercent);
+        if (form.discountPercent !== "" && Number.isNaN(d)) nextErr.discountPercent = "Лише число";
+        else if (d < 0 || d > 100) nextErr.discountPercent = "0–100%";
+        if (form.stockQuantity !== "" && Number.isNaN(Number(form.stockQuantity)))
+          nextErr.stockQuantity = "Лише число";
+        else if (form.stockQuantity !== "" && Number(form.stockQuantity) < 0)
+          nextErr.stockQuantity = "Не від'ємне";
+      }
     }
 
     if (s === 3 && photoUrl.trim()) {
@@ -177,6 +216,18 @@ export function ProductForm({ kind, initial, onSaved, onCancel, onDeleted }: Pro
         photos: form.photos,
         status: form.status,
       };
+
+      if (kind === "product") {
+        const uah = form.priceUAH === "" ? null : Number(form.priceUAH);
+        const disc = Math.min(100, Math.max(0, Math.round(Number(form.discountPercent || 0))));
+        body.discountPercent = disc;
+        body.stockQuantity =
+          form.stockQuantity.trim() === "" ? null : Math.max(0, Math.round(Number(form.stockQuantity)));
+        body.dimensionsText = form.dimensionsText.trim() || null;
+        if (uah != null && !Number.isNaN(uah)) {
+          body.priceTokens = syncPriceTokensFromUah(uah, disc);
+        }
+      }
 
       if (kind !== "product") {
         body.type = kind === "service-offer" ? "offer" : "request";
@@ -339,19 +390,61 @@ export function ProductForm({ kind, initial, onSaved, onCancel, onDeleted }: Pro
                   onChange={(e) => update("priceUAH", e.target.value)}
                   placeholder="100"
                 />
-                <Input
-                  label="Ціна в монетах"
-                  type="number"
-                  min="0"
-                  value={form.priceTokens}
-                  error={fieldErrors.priceTokens}
-                  onChange={(e) => update("priceTokens", e.target.value)}
-                  placeholder="0"
-                />
+                {kind === "product" ? (
+                  <Input
+                    label="Знижка, %"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={form.discountPercent}
+                    error={fieldErrors.discountPercent}
+                    onChange={(e) => update("discountPercent", e.target.value)}
+                    placeholder="0"
+                  />
+                ) : (
+                  <Input
+                    label="Ціна в монетах"
+                    type="number"
+                    min="0"
+                    value={form.priceTokens}
+                    error={fieldErrors.priceTokens}
+                    onChange={(e) => update("priceTokens", e.target.value)}
+                    placeholder="0"
+                  />
+                )}
               </div>
-              <p className="text-xs text-muted-foreground -mt-1">
-                Залиште 0 або порожнє — позначимо як «Договірна».
-              </p>
+              {kind === "product" && (
+                <ProductPricePreview priceUAH={form.priceUAH} discountPercent={form.discountPercent} />
+              )}
+              {kind !== "product" && (
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Залиште 0 або порожнє — позначимо як «Договірна».
+                </p>
+              )}
+              {kind === "product" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      label="Кількість на складі"
+                      type="number"
+                      min="0"
+                      value={form.stockQuantity}
+                      error={fieldErrors.stockQuantity}
+                      onChange={(e) => update("stockQuantity", e.target.value)}
+                      placeholder="Порожньо — без обліку"
+                    />
+                    <Input
+                      label="Розміри / габарити"
+                      value={form.dimensionsText}
+                      onChange={(e) => update("dimensionsText", e.target.value)}
+                      placeholder="напр. 40×30×12 см"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Оплата в СпівМонетах підраховується автоматично з ціни в ₴ та знижки.
+                  </p>
+                </>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   label="Місто"
@@ -436,8 +529,8 @@ export function ProductForm({ kind, initial, onSaved, onCancel, onDeleted }: Pro
                   value={form.status}
                   onChange={(e) => update("status", e.target.value as ProductFormValues["status"])}
                   options={[
-                    { value: "active", label: "Активне" },
-                    { value: "paused", label: "На паузі" },
+                    { value: "active", label: "Активне (на вітрині)" },
+                    { value: "paused", label: "Приховано (пауза)" },
                   ]}
                 />
               )}
