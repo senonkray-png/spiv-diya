@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { canManageSellerCatalog } from "@/lib/auth";
 import { fetchAndParseProducts } from "@/lib/import/site-importer";
 
+export const runtime = "nodejs";
+
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
