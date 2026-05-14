@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
   ArrowRight,
   Layers,
@@ -17,6 +18,7 @@ export interface HomeHeroProps {
 
 export function HomeHero({ companies, products, services }: HomeHeroProps) {
   const reduce = useReducedMotion();
+  const t = useTranslations("hero");
   return (
     <motion.section
       className="relative overflow-hidden border-b border-border/60"
@@ -39,21 +41,20 @@ export function HomeHero({ companies, products, services }: HomeHeroProps) {
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/15 bg-card/90 px-4 py-1.5 shadow-sm backdrop-blur-sm dark:border-primary/25">
             <Sparkles className="size-3.5 text-primary shrink-0" aria-hidden />
             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Маркетплейс і кооперація
+              {t("badge")}
             </span>
           </div>
 
           <h1 className="text-[2.125rem] font-bold tracking-tight text-foreground leading-[1.1] sm:text-5xl lg:text-[3.25rem]">
-            Усе для вашого бізнесу&nbsp;
-            <span className="text-primary dark:text-[#79b8ed]">в одному місці</span>
+            {t("title")}
+            <span className="text-primary dark:text-[#79b8ed]">{t("titleAccent")}</span>
           </h1>
 
           <p className="mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed">
-            Розміщуйте товари й послуги, знаходьте партнерів і підрядників, закривайте дефіцити ресурсів —
-            через одну зрозумілу платформу.
+            {t("subtitle")}
           </p>
           <p className="mt-3 max-w-xl text-sm text-muted-foreground leading-relaxed">
-            Вхід — email та пароль. Далі — вибір ролі та підписка для продавців і підприємців за потреби.
+            {t("hint")}
           </p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -62,22 +63,22 @@ export function HomeHero({ companies, products, services }: HomeHeroProps) {
               className="group inline-flex min-h-[3rem] flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-card px-6 py-3 text-base font-semibold text-card-foreground shadow-card transition-[transform,box-shadow] hover:shadow-card-hover motion-safe:hover:scale-[1.02] motion-reduce:hover:scale-100 active:scale-[0.98] sm:flex-initial md:min-w-[200px]"
             >
               <Layers className="size-5 text-primary" aria-hidden />
-              Знайти для бізнесу
+              {t("ctaFind")}
               <ArrowRight className="size-4 opacity-70 transition-transform group-hover:translate-x-0.5" aria-hidden />
             </Link>
             <Link
               href="/register"
               className="inline-flex min-h-[3rem] flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-md transition-[transform,box-shadow] hover:bg-primary-hover hover:shadow-lg motion-safe:hover:scale-[1.02] motion-reduce:hover:scale-100 active:scale-[0.98] sm:flex-initial md:min-w-[200px]"
             >
-              Запропонувати ресурси
+              {t("ctaOffer")}
               <ArrowRight className="size-4" aria-hidden />
             </Link>
           </div>
 
           <div className="mt-14 grid grid-cols-3 gap-3 border-t border-border/60 pt-10 sm:max-w-md">
-            <StatChip label="Підприємств" value={companies} />
-            <StatChip label="Товарів" value={products} />
-            <StatChip label="Послуг" value={services} />
+            <StatChip label={t("statsCompanies")} value={companies} />
+            <StatChip label={t("statsProducts")} value={products} />
+            <StatChip label={t("statsServices")} value={services} />
           </div>
         </div>
 

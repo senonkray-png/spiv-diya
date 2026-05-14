@@ -4,9 +4,11 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { LayoutDashboard, Menu, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { HeaderMarketplaceSearch } from "@/components/layout/HeaderMarketplaceSearch";
 import { MarketplaceHeaderIconRail } from "@/components/layout/MarketplaceHeaderQuickNav";
+import { LanguageSwitcher } from "@/components/ui/LanguageSwitcher";
 
 export interface SiteHeaderNavItem {
   href: string;
@@ -27,6 +29,7 @@ export function SiteHeader({
   isAuthenticated = false,
   showMarketplaceSearch: showSearchProp,
 }: SiteHeaderProps) {
+  const t = useTranslations("nav");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -90,18 +93,18 @@ export function SiteHeader({
         style={{ top: overlayTopPx }}
         role="dialog"
         aria-modal="true"
-        aria-label="Меню"
+        aria-label={t("mobileMenuLabel")}
       >
         <button
           type="button"
           className="absolute inset-0 bg-foreground/35 backdrop-blur-[2px]"
-          aria-label="Закрити меню"
+          aria-label={t("mobileCloseOverlay")}
           onClick={() => setOpen(false)}
         />
         <aside className="absolute right-0 top-0 bottom-0 flex w-[min(20rem,calc(100vw-1rem))] flex-col gap-4 overflow-y-auto border-l border-border bg-background p-5 shadow-2xl">
           {tabs.length > 0 && (
-            <nav className="flex flex-col gap-0.5 border-b border-border/60 pb-4" aria-label="Розділи маркетплейсу">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Маркетплейс</p>
+            <nav className="flex flex-col gap-0.5 border-b border-border/60 pb-4" aria-label={t("mobileMarketplaceSection")}>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("mobileMarketplaceSection")}</p>
               {tabs.map((t) => (
                 <Link
                   key={t.href}
@@ -114,7 +117,7 @@ export function SiteHeader({
               ))}
             </nav>
           )}
-          <nav className="flex flex-col gap-1" aria-label="Мобільна навігація">
+          <nav className="flex flex-col gap-1" aria-label={t("mobileMenuLabel")}>
             {!tabs.length && (
               <>
                 <Link
@@ -122,14 +125,14 @@ export function SiteHeader({
                   className={`${linkClass} rounded-xl px-3 py-3 hover:bg-muted`}
                   onClick={() => setOpen(false)}
                 >
-                  Маркетплейс
+                  {t("marketplace")}
                 </Link>
                 <Link
                   href="/marketplace/products"
                   className={`${linkClass} rounded-xl px-3 py-3 hover:bg-muted`}
                   onClick={() => setOpen(false)}
                 >
-                  Каталог товарів
+                  {t("catalog")}
                 </Link>
               </>
             )}
@@ -139,7 +142,7 @@ export function SiteHeader({
               onClick={() => setOpen(false)}
             >
               <LayoutDashboard className="size-5 shrink-0 text-primary" aria-hidden />
-              Особистий кабінет
+              {t("cabinet")}
             </Link>
             {!isAuthenticated && (
               <>
@@ -148,14 +151,14 @@ export function SiteHeader({
                   className={`${linkClass} rounded-xl px-3 py-3 hover:bg-muted`}
                   onClick={() => setOpen(false)}
                 >
-                  Увійти
+                  {t("login")}
                 </Link>
                 <Link
                   href="/register"
                   className={`${linkClassActiveAccent} mt-1 rounded-xl bg-primary px-4 py-3 text-center text-primary-foreground hover:no-underline`}
                   onClick={() => setOpen(false)}
                 >
-                  Зареєструватись
+                  {t("register")}
                 </Link>
               </>
             )}
@@ -196,9 +199,10 @@ export function SiteHeader({
           <div className="ml-auto hidden shrink-0 items-center gap-3 md:flex">
             {!tabs.length && (
               <Link href="/marketplace" className={linkClass}>
-                Маркетплейс
+                {t("marketplace")}
               </Link>
             )}
+            <LanguageSwitcher />
             <ThemeToggle />
             {tabs.length === 0 && (
               <Link
@@ -206,7 +210,7 @@ export function SiteHeader({
                 className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/80 px-4 py-2 text-sm font-semibold text-foreground shadow-sm transition-[transform,box-shadow,background-color] hover:bg-muted/80 hover:shadow-md active:scale-[0.98]"
               >
                 <LayoutDashboard className="size-[1.125rem] shrink-0 text-primary" aria-hidden />
-                Особистий кабінет
+                {t("cabinet")}
               </Link>
             )}
             {!isAuthenticated && (
@@ -217,7 +221,7 @@ export function SiteHeader({
                   " rounded-xl bg-primary px-4 py-2 text-primary-foreground shadow-sm hover:no-underline hover:opacity-90 hover:shadow-md"
                 }
               >
-                Зареєструватись
+                {t("register")}
               </Link>
             )}
           </div>
@@ -231,14 +235,14 @@ export function SiteHeader({
                 className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
                 onClick={() => setOpen(false)}
               >
-                Реєстрація
+                {t("registerShort")}
               </Link>
             )}
             <button
               type="button"
               aria-expanded={open}
               aria-controls="mobile-menu"
-              aria-label={open ? "Закрити меню" : "Відкрити меню"}
+              aria-label={open ? t("mobileCloseLabel") : t("mobileOpenLabel")}
               className="inline-flex rounded-lg border border-border p-2 text-foreground transition-colors hover:bg-muted/80"
               onClick={() => setOpen((v) => !v)}
             >
@@ -258,7 +262,7 @@ export function SiteHeader({
             {tabs.length > 0 && (
               <nav
                 className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-center gap-1 overflow-x-auto px-1 py-2 md:gap-2 md:px-2"
-                aria-label="Маркетплейс"
+                aria-label={t("marketplace")}
               >
                 {tabs.map((t) => (
                   <Link

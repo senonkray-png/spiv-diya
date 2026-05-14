@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { ProductCard } from "@/components/market/ProductCard";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const session = await getSession();
+  const t = await getTranslations();
   if (session) {
     redirect("/marketplace");
   }
@@ -42,29 +44,17 @@ export default async function Home() {
       {/* Features */}
       <RevealSection as="section" className="mx-auto max-w-7xl border-t border-border/60 px-4 py-14 md:px-6 md:py-20">
         <h2 className="text-center text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-          Як працює СпівДія
+          {t("howItWorks.title")}
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground leading-relaxed">
-          Усе спроектовано так, щоб навіть власник без технічної підготовки міг розпочати за кілька хвилин.
+          {t("howItWorks.subtitle")}
         </p>
 
         <div className="mt-10 grid gap-4 md:grid-cols-3 md:gap-5">
           {[
-            {
-              step: "01",
-              title: "Заповніть профіль",
-              desc: "Назва компанії, ніша, контакти й посилання на сайт — усе онлайн.",
-            },
-            {
-              step: "02",
-              title: "Розмістіть товари або імпортуйте",
-              desc: "Додайте вручну або вкажіть URL магазину — підтягнемо назви, фото й ціни.",
-            },
-            {
-              step: "03",
-              title: "Знайдіть партнерів і клієнтів",
-              desc: "Чат, обране, запрошення в партнери — без зайвих кроків.",
-            },
+            { step: "01", title: t("howItWorks.step1Title"), desc: t("howItWorks.step1Desc") },
+            { step: "02", title: t("howItWorks.step2Title"), desc: t("howItWorks.step2Desc") },
+            { step: "03", title: t("howItWorks.step3Title"), desc: t("howItWorks.step3Desc") },
           ].map((f) => (
             <div
               key={f.step}
@@ -88,13 +78,13 @@ export default async function Home() {
         >
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-              Свіже на маркетплейсі
+              {t("fresh.title")}
             </h2>
             <Link
               href="/marketplace/products"
               className="text-sm font-semibold text-primary transition-transform motion-safe:hover:scale-[1.03] motion-reduce:hover:scale-100 hover:underline"
             >
-              Усі товари →
+              {t("fresh.allProducts")}
             </Link>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -109,16 +99,16 @@ export default async function Home() {
       <RevealSection as="section" className="bg-primary py-16 md:py-20 mt-2">
         <div className="mx-auto max-w-3xl px-4 text-center md:px-6">
           <h2 className="mb-4 text-3xl font-bold text-primary-foreground md:text-4xl">
-            Готові розпочати?
+            {t("cta.title")}
           </h2>
           <p className="mb-8 text-base leading-relaxed text-primary-foreground/85 md:text-lg">
-            Реєстрація займає близько хвилини. Далі — профіль, роль і робота з каталогом.
+            {t("cta.subtitle")}
           </p>
           <Link
             href="/register"
             className="inline-flex items-center rounded-xl bg-accent px-6 py-3 text-base font-semibold text-accent-foreground shadow-md transition-[transform,box-shadow,filter] motion-safe:hover:scale-[1.03] hover:brightness-95 active:scale-[0.98] motion-reduce:hover:scale-100 md:px-8 md:py-4 md:text-lg"
           >
-            Приєднатись безкоштовно
+            {t("cta.button")}
           </Link>
         </div>
       </RevealSection>

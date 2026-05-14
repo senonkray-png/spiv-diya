@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import {
   Download,
   MessageCircleMore,
@@ -10,52 +11,18 @@ import {
   Wrench,
 } from "lucide-react";
 
-const items: {
-  title: string;
-  description: string;
-  icon: typeof Package;
-  className: string;
-}[] = [
-  {
-    title: "Каталог товарів",
-    description: "Картки з фото, ціною та контактом продавця. Швидкий пошук по маркету.",
-    icon: Package,
-    className: "md:col-span-7 md:min-h-[170px]",
-  },
-  {
-    title: "Послуги та запити",
-    description: "Описуйте послуги або шукайте виконавців під задачу.",
-    icon: Wrench,
-    className: "md:col-span-5 md:min-h-[170px]",
-  },
-  {
-    title: "Імпорт із вашого сайту",
-    description: "Один або кілька кліків — товари з онлайн-вітрини в каталозі.",
-    icon: Download,
-    className: "md:col-span-4",
-  },
-  {
-    title: "Чати й переговори",
-    description: "Пишіть контрагентам напряму, домовляйтесь без сторонніх месенджерів.",
-    icon: MessageCircleMore,
-    className: "md:col-span-4",
-  },
-  {
-    title: "Партнери та обране",
-    description: "Зберігайте компанії та будуйте постійні зв’язки.",
-    icon: Star,
-    className: "md:col-span-4",
-  },
-  {
-    title: "Гаманець і СпівМонети",
-    description: "Внутрішня валюта для платежів і обмінів на платформі.",
-    icon: Wallet,
-    className: "md:col-span-12",
-  },
-];
-
 export function HomeCapabilitiesBento() {
   const reduce = useReducedMotion();
+  const t = useTranslations("bento");
+
+  const items = [
+    { title: t("item1Title"), description: t("item1Desc"), icon: Package, className: "md:col-span-7 md:min-h-[170px]" },
+    { title: t("item2Title"), description: t("item2Desc"), icon: Wrench, className: "md:col-span-5 md:min-h-[170px]" },
+    { title: t("item3Title"), description: t("item3Desc"), icon: Download, className: "md:col-span-4" },
+    { title: t("item4Title"), description: t("item4Desc"), icon: MessageCircleMore, className: "md:col-span-4" },
+    { title: t("item5Title"), description: t("item5Desc"), icon: Star, className: "md:col-span-4" },
+    { title: t("item6Title"), description: t("item6Desc"), icon: Wallet, className: "md:col-span-12" },
+  ];
 
   const sectionMotion = reduce
     ? {}
@@ -74,10 +41,10 @@ export function HomeCapabilitiesBento() {
       <div className="mx-auto max-w-7xl px-4 md:px-6">
         <div className="mx-auto mb-11 max-w-2xl text-center md:mb-14">
           <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            Можливості платформи
+            {t("title")}
           </h2>
           <p className="mt-3 text-muted-foreground leading-relaxed">
-            Різний розмір карток — як у Bento: головне на виду, решта напівторкає структуру продукту.
+            {t("subtitle")}
           </p>
         </div>
 

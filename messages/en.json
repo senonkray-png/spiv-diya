@@ -1,0 +1,68 @@
+{
+  "nav": {
+    "marketplace": "Marketplace",
+    "catalog": "Product Catalog",
+    "cabinet": "My Dashboard",
+    "login": "Sign In",
+    "register": "Sign Up",
+    "registerShort": "Sign Up",
+    "mobileMenuLabel": "Menu",
+    "mobileCloseLabel": "Close menu",
+    "mobileOpenLabel": "Open menu",
+    "mobileCloseOverlay": "Close menu",
+    "mobileMarketplaceSection": "Marketplace"
+  },
+  "hero": {
+    "badge": "Marketplace & Cooperation",
+    "title": "Everything for your business ",
+    "titleAccent": "in one place",
+    "subtitle": "List products and services, find partners and contractors, close resource gaps — through one simple platform.",
+    "hint": "Sign in with email and password. Then choose a role and subscribe for sellers and entrepreneurs if needed.",
+    "ctaFind": "Find for business",
+    "ctaOffer": "Offer resources",
+    "statsCompanies": "Companies",
+    "statsProducts": "Products",
+    "statsServices": "Services"
+  },
+  "bento": {
+    "title": "Platform features",
+    "subtitle": "Different card sizes — Bento style: the essentials at a glance, the rest defines the structure.",
+    "item1Title": "Product catalog",
+    "item1Desc": "Cards with photos, prices and seller contacts. Fast search across the market.",
+    "item2Title": "Services & requests",
+    "item2Desc": "Describe your services or find contractors for a task.",
+    "item3Title": "Import from your site",
+    "item3Desc": "One or a few clicks — products from your online store into the catalog.",
+    "item4Title": "Chats & negotiations",
+    "item4Desc": "Message counterparties directly, negotiate without third-party messengers.",
+    "item5Title": "Partners & favourites",
+    "item5Desc": "Save companies and build lasting connections.",
+    "item6Title": "Wallet & SpivCoins",
+    "item6Desc": "Internal currency for payments and exchanges on the platform."
+  },
+  "howItWorks": {
+    "title": "How SpivDiya works",
+    "subtitle": "Everything is designed so that even a non-technical business owner can get started in minutes.",
+    "step1Title": "Fill in your profile",
+    "step1Desc": "Company name, niche, contacts and website link — all online.",
+    "step2Title": "Add products or import",
+    "step2Desc": "Add manually or enter your shop URL — we'll pull names, photos and prices.",
+    "step3Title": "Find partners and clients",
+    "step3Desc": "Chat, favourites, partner invites — no extra steps."
+  },
+  "fresh": {
+    "title": "Fresh on the marketplace",
+    "allProducts": "All products →"
+  },
+  "cta": {
+    "title": "Ready to get started?",
+    "subtitle": "Registration takes about a minute. Then — profile, role and working with the catalog.",
+    "button": "Join for free"
+  },
+  "lang": {
+    "uk": "UA",
+    "ru": "RU",
+    "en": "EN",
+    "label": "Language"
+  }
+}
